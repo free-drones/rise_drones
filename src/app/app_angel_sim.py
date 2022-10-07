@@ -48,7 +48,8 @@ _context = zmq.Context()
 
 class AppAngelSim():
   # Init
-  def __init__(self, app_ip, app_id, crm, capabilities):
+
+  def __init__(self, app_ip, app_id, crm, drone_capabilities):
     # Create Client object
     self.drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
 
@@ -68,8 +69,8 @@ class AppAngelSim():
 
     self._app_ip = app_ip
     self.drone_data = None
-    # capabilities
-    self.capabilities = capabilities
+    # capabilities for the requested drone
+    self.drone_capabilities = drone_capabilities
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
@@ -241,9 +242,8 @@ class AppAngelSim():
   #--------------------------------------------------------------------#
   # Main function
   def main(self, mission):
-
-    # Get a drone
-    answer = self.crm.get_drone(capabilities=self.capabilities)
+    # Get a drone with the right capabilities
+    answer = self.crm.get_drone(capabilities=self.drone_capabilities)
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
       return
@@ -270,7 +270,7 @@ class AppAngelSim():
 
     # Initialization
     self.drone.try_set_init_point('drone')
-    self.drone.set_geofence(6, 230, 650)
+    self.drone.set_geofence(1, 230, 650)
 
     # Upload mission
     if "lat" in mission["id0"]:
@@ -281,17 +281,16 @@ class AppAngelSim():
     # take-off
     _logger.info("Take off")
     self.drone.arm_and_takeoff(min(30, mission["id0"]["alt"]))
-    self.perform_action("post takeoff")
     self.drone.reset_dss_srtl()
     # Fly waypoints, allow PILOT intervention.
-    current_wp = self.start_wp
+    current_wp = 0
     while True:
       try:
         self.drone.fly_waypoints(current_wp)
+        self.drone.land()
       except dss.auxiliaries.exception.Nack as nack:
         if nack.msg == 'Not flying':
           _logger.info("Pilot has landed")
-          self.perform_action("aborted")
         else:
           _logger.warning('Fly mission was nacked: %s', nack.msg)
         break
@@ -309,70 +308,66 @@ class AppAngelSim():
 
     # rtl if not already on ground
     if self.drone.is_armed():
-      _logger.info("Autopilot rtl, will land straight down if within 20m from init point")
-      self.perform_action("rtl")
       self.drone.rtl()
 
-    self.perform_action("landed")
-
 #--------------------------------------------------------------------#
-def _main():
-  # parse command-line arguments
-  parser = argparse.ArgumentParser(description='APP "app map"', allow_abbrev=False, add_help=False)
-  parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
-  parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
-  parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
-  parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
-  parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
-  parser.add_argument('--log', type=str, default='debug', help='logging threshold')
-  parser.add_argument('--mission', type=str, default='Mission_lla.json')
-  parser.add_argument('--owner', type=str, help='id of the instance controlling the app- not used in this use case')
-  parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
-  args = parser.parse_args()
+  def _main():
+    # parse command-line arguments
+    parser = argparse.ArgumentParser(description='APP "app map"', allow_abbrev=False, add_help=False)
+    parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
+    parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
+    parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
+    parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
+    parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
+    parser.add_argument('--log', type=str, default='debug', help='logging threshold')
+    parser.add_argument('--mission', type=str, default='Mission_lla.json')
+    parser.add_argument('--owner', type=str, help='id of the instance controlling the app- not used in this use case')
+    parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
+    args = parser.parse_args()
 
-  # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
-  # Initiate log file
-  dss.auxiliaries.logging.configure('app_mission', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
+    # Identify subnet to sort log files in structure
+    subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+    # Initiate log file
+    dss.auxiliaries.logging.configure('app_mission', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
-  # Create the PhotoMission class
-  try:
-    app = AppAngelSim(args.app_ip, args.id, args.crm, args.capabilities)
-  except dss.auxiliaries.exception.NoAnswer:
-    _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
-    sys.exit()
-  except:
-    _logger.error('Failed to instantiate application\n%s', traceback.format_exc())
-    sys.exit()
+    # Create the PhotoMission class
+    try:
+      app = AppAngelSim(args.app_ip, args.id, args.crm, args.capabilities)
+    except dss.auxiliaries.exception.NoAnswer:
+      _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
+      sys.exit()
+    except:
+      _logger.error('Failed to instantiate application\n%s', traceback.format_exc())
+      sys.exit()
 
-  # load mission from file
-  with open(args.mission, encoding='utf-8') as handle:
-    mission = json.load(handle)
-  if "source_file" in mission:
-    mission.pop("source_file")
+    # load mission from file
+    with open(args.mission, encoding='utf-8') as handle:
+      mission = json.load(handle)
+    if "source_file" in mission:
+      mission.pop("source_file")
 
-  _logger.debug(json.dumps(mission, indent=2))
+    _logger.debug(json.dumps(mission, indent=2))
 
-  # Try to setup objects and initial sockets
-  try:
-    # Try to run main
-    app.main(mission)
-  except KeyboardInterrupt:
-    print('', end='\r')
-    _logger.warning('Shutdown due to keyboard interrupt')
-  except dss.auxiliaries.exception.Nack as error:
-    _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-  except dss.auxiliaries.exception.NoAnswer as error:
-    _logger.error(f'NoAnswer when sending: {error.fcn} to {error.ip}:{error.port}')
-  except:
-    _logger.error(f'unexpected exception\n{traceback.format_exc()}')
+    # Try to setup objects and initial sockets
+    try:
+      # Try to run main
+      app.main(mission)
+    except KeyboardInterrupt:
+      print('', end='\r')
+      _logger.warning('Shutdown due to keyboard interrupt')
+    except dss.auxiliaries.exception.Nack as error:
+      _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+    except dss.auxiliaries.exception.NoAnswer as error:
+      _logger.error(f'NoAnswer when sending: {error.fcn} to {error.ip}:{error.port}')
+    except:
+      _logger.error(f'unexpected exception\n{traceback.format_exc()}')
 
-  try:
-    app.kill()
-  except:
-    _logger.error(f'unexpected exception\n{traceback.format_exc()}')
+    try:
+      app.kill()
+    except:
+      _logger.error(f'unexpected exception\n{traceback.format_exc()}')
 
 
-#--------------------------------------------------------------------#
-if __name__ == '__main__':
-  _main()
+  #--------------------------------------------------------------------#
+  if __name__ == '__main__':
+    _main()
