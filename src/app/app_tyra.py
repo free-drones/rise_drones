@@ -538,6 +538,7 @@ class TYRApp:
     msg['id'] = self._app_id
     msg['ip'] = self._app_ip
     msg['port'] = self._app_socket.port
+    msg['capabilities'] = []
     answer = self._crm_socket.send_and_receive(msg)
     if not dss.auxiliaries.zmq.is_ack(answer, call):
       _logger.error(f'register failed: {answer}')
