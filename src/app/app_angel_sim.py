@@ -48,7 +48,7 @@ _context = zmq.Context()
 
 class AppAngelSim():
   # Init
-  def __init__(self, app_ip, app_id, crm, capabilities):
+  def __init__(self, app_ip, app_id, crm, drone_capabilities):
     # Create Client object
     self.drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
 
@@ -68,8 +68,8 @@ class AppAngelSim():
 
     self._app_ip = app_ip
     self.drone_data = None
-    # capabilities
-    self.capabilities = capabilities
+    # capabilities for the requested drone
+    self.drone_capabilities = drone_capabilities
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
@@ -242,8 +242,8 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
 
-    # Get a drone
-    answer = self.crm.get_drone(capabilities=self.capabilities)
+    # Get a drone with the right capabilities
+    answer = self.crm.get_drone(capabilities=self.drone_capabilities)
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
       return
@@ -270,7 +270,7 @@ class AppAngelSim():
 
     # Initialization
     self.drone.try_set_init_point('drone')
-    self.drone.set_geofence(6, 230, 650)
+    self.drone.set_geofence(1, 230, 650)
 
     # Upload mission
     if "lat" in mission["id0"]:
@@ -281,17 +281,16 @@ class AppAngelSim():
     # take-off
     _logger.info("Take off")
     self.drone.arm_and_takeoff(min(30, mission["id0"]["alt"]))
-    self.perform_action("post takeoff")
     self.drone.reset_dss_srtl()
     # Fly waypoints, allow PILOT intervention.
-    current_wp = self.start_wp
+    current_wp = 0
     while True:
       try:
         self.drone.fly_waypoints(current_wp)
+        self.drone.land()
       except dss.auxiliaries.exception.Nack as nack:
         if nack.msg == 'Not flying':
           _logger.info("Pilot has landed")
-          self.perform_action("aborted")
         else:
           _logger.warning('Fly mission was nacked: %s', nack.msg)
         break
@@ -309,11 +308,7 @@ class AppAngelSim():
 
     # rtl if not already on ground
     if self.drone.is_armed():
-      _logger.info("Autopilot rtl, will land straight down if within 20m from init point")
-      self.perform_action("rtl")
       self.drone.rtl()
-
-    self.perform_action("landed")
 
 #--------------------------------------------------------------------#
 def _main():
