@@ -307,15 +307,15 @@ class Monitor():
               if "[SIM]" in client['desc']:
                 client['sim_real'] = "simulated"
                 client['drone_name'] = "RISE-" + client['id']
-                client['drone_type'] = 'simulated'
+                client['drone_type'] = 'air'
               elif "HX" in client['desc']:
                 client['sim_real'] = "real"
                 client['drone_name'] = "RISE-" + client['desc']
-                client['drone_type'] = 'Hexacopter'
+                client['drone_type'] = 'air'
               else:
                 client['sim_real'] = "real"
                 client['drone_name'] = "RISE-"+client['id']
-                client['drone_type'] = "DJI Mini"
+                client['drone_type'] = "air"
               self.clients.append(client)
               print(f'Client {client} added to the list')
               self.setup_client(client)
