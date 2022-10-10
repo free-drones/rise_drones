@@ -543,10 +543,10 @@ class KeyboardClient(dss.client.Client):
           if self._dss is not None:
             print("Already connected to a drone")
           else:
-            print("Trying to connect to drone with capability: [LMD, RTK]")
+            print("Trying to connect to drone with capabilities: [LMD, RTK]")
             answer = self._crm.get_drone(capabilities=['LMD', 'RTK'])
             if not dss.auxiliaries.zmq.is_ack(answer, 'get_drone'):
-              print("No available drone with capability: [LMD, RTK]")
+              print("No available drone with capabilities: [LMD, RTK]")
             else:
               self._drone_name = answer['id']
               time.sleep(1.0)
