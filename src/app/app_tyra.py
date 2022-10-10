@@ -439,7 +439,7 @@ class TYRApp:
   def task_low_battery(self):
     if self._drone1.connected():
       if self._drone1._battery_low and not self._drone2.connected():
-        answer = self._crm_socket.send_and_receive({'fcn': 'get_drone', 'id': self._app_id, 'capability': self.capability})
+        answer = self._crm_socket.send_and_receive({'fcn': 'get_drone', 'id': self._app_id, 'capabilities': self.capability})
         if dss.auxiliaries.zmq.is_ack(answer):
           self._task_queue.add(self.task_getDrone, answer['id'], answer['ip'], answer['port'])
         else:
