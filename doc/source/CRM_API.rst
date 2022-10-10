@@ -143,7 +143,17 @@ client.
 All clients must provide a list of ``capabilities``. However, note that
 this list is allowed to be empty. Each capability is represented as a string.
 The lists of capabilities are used by the CRM to allocate available resources when
-applications require a drone with certain capabilities to perform a task.
+applications require a drone with certain capabilities to perform a task. The following capabilities are supported:
+
+* SIM - Drone is simulated
+* REAL - Drone is not simulated
+* C0 - Drone is C0 compatible, below 250g. Note second char is a zero - Charlie Zero.
+* RTK - RTK compatible
+* RGB - RGB camera compatible
+* IR - IR camera compatible
+* LMD - Drone can do last mile delivery, can carry and drop load.
+* STREAM - Drone can stream video
+* SPOTLIGHT - Drone has a spotlight
 
 If the CRM responds with an ack and the registering client is DSS it
 shall set it's owner to 'crm'.
@@ -163,7 +173,7 @@ shall set it's owner to 'crm'.
     "id": "",
     "name": "DSS HX003",
     "desc": "<description>",
-    "capabilities": ["RTK", "LMD"],
+    "capabilities": ["C0", "REAL"],
     "type": "dss",
     "ip": "<ip>",
     "port": 1234
