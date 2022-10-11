@@ -70,7 +70,7 @@ class CRM:
   def get_info(self):
     return self._socket.send_and_receive({'id': self._app_id, 'fcn': 'get_info'})
 
-  def launch_app(self, app_name, extra_args, launch : bool=True):
+  def launch_app(self, app_name, extra_args=[], launch : bool=True):
     return self._socket.send_and_receive({'id': self._app_id, 'fcn': 'launch_app', 'app': app_name, 'launch': launch, 'extra_args': extra_args})
 
   # TODO: launch_drone_helper

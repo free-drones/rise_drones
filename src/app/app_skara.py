@@ -285,7 +285,7 @@ class AppSkara():
         lla_pub_thread = threading.Thread(self._her_lla_publisher, args=[role, lla_publisher])
         lla_pub_thread.start()
         #Enable follow stream
-        drone.enable_follow_stream(self._app_ip, lla_pub_thread.port)
+        drone.enable_follow_stream(self._app_ip, lla_publisher.port)
 
 
 #--------------------------------------------------------------------#
