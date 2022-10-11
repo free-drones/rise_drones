@@ -253,11 +253,11 @@ class AppAngelSim():
         _logger.info(f'App_skara not found, sleeping for 2 seconds')
         time.sleep(2.0)
 
-  def send_follow_her(self):
+  def send_follow_her(self, enable):
     dss_id = self.drone.get_id()
     # Create message
     call = 'follow_her'
-    msg = {'fcn': call, 'id': self.crm.app_id, 'enable': True, 'target_id': dss_id, 'capabilities': 'SPOTLIGHT'}
+    msg = {'fcn': call, 'id': self.crm.app_id, 'enable': enable, 'target_id': dss_id, 'capabilities': 'SPOTLIGHT'}
     answer = self._app_skara_socket.send_and_receive(msg)
     # handle nack
     if not dss.auxiliaries.zmq.is_ack(answer, call):
@@ -269,7 +269,7 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
     #Launch app skara
-    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1"])
+    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1", '--capabilities', 'SPOTLIGHT'])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
@@ -296,7 +296,7 @@ class AppAngelSim():
     _logger.info(self.drone._dss.get_info())
 
     # Request app_skara to follow the drone
-    self.send_follow_her()
+    self.send_follow_her(enable=True)
     # Wait for other drones to launch
     time.sleep(20.0)
     # Request controls from PILOT
@@ -342,6 +342,7 @@ class AppAngelSim():
         # Mission is completed
         break
 
+    self.send_follow_her(enable=False)
     # rtl if not already on ground
     if self.drone.is_armed():
       self.drone.rtl()
