@@ -51,7 +51,7 @@ _context = zmq.Context()
 
 class AppSkara():
   # Init
-  def __init__(self, app_ip, app_id, crm, drone_capabilities, n_drones, owner):
+  def __init__(self, app_ip, app_id, crm, n_drones, owner):
     # Create CRM object
     self.crm = dss.client.CRM(_context, crm, app_name='app_skara.py', desc='SkarApp for following cyclist', app_id=app_id)
 
@@ -65,9 +65,6 @@ class AppSkara():
     self._owner = owner
     self._app_ip = app_ip
     self.drone_data = {}
-    # capabilities required for the allocated drones
-    self.drone_capabilities = drone_capabilities
-
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
@@ -285,7 +282,7 @@ class AppSkara():
         #Obtain a drone with correct capabilities
         drone_received = False
         while not drone_received:
-          answer = self.crm.get_drone(capabilities=self.drone_capabilities)
+          answer = self.crm.get_drone(capabilities=msg['capabilities'])
           if not dss.auxiliaries.zmq.is_ack(answer):
             _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
             time.sleep(2.0)
@@ -339,7 +336,6 @@ def _main():
   parser = argparse.ArgumentParser(description='APP "app skara"', allow_abbrev=False, add_help=False)
   parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
   parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
-  parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
   parser.add_argument('--n_drones', type=int, default=1, help='Number of drones used to track the cyclist')
   parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
@@ -355,7 +351,7 @@ def _main():
 
   # Create the PhotoMission class
   try:
-    app = AppSkara(args.app_ip, args.id, args.crm, args.capabilities, args.n_drones, args.owner)
+    app = AppSkara(args.app_ip, args.id, args.crm, args.n_drones, args.owner)
   except dss.auxiliaries.exception.NoAnswer:
     _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
     sys.exit()
