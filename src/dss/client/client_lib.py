@@ -268,6 +268,10 @@ class Client:
     answer = self._dss.get_info()
     return int(answer[port_label])
 
+  def get_id(self) -> str:
+    answer = self._dss.get_info()
+    return str(answer['id'])
+
   # Check flight mode
   def is_flight_mode(self, mode) -> bool:
     return self._dss.get_flightmode() == mode
