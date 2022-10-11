@@ -174,6 +174,8 @@ class AppSkara():
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
+        if dss.auxiliaries.zmq.is_ack(answer):
+          self._task_msg = msg
       except:
         pass
     self._app_socket.close()
@@ -242,7 +244,7 @@ class AppSkara():
     # Accept if target id in list from CRM
     else:
       answer = self.crm.clients(filter=msg['target_id'])
-      if len(answer['clients'] > 0):
+      if len(answer['clients']) > 0:
         self.her = answer['clients'][0]
         answer = dss.auxiliaries.zmq.ack(fcn)
       else:
