@@ -52,6 +52,8 @@ class AppAngelSim():
   def __init__(self, app_ip, app_id, crm, drone_capabilities):
     # Create Client object
     self.drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
+    self.drone_ip = None
+    self.drone_info_port = None
 
     # Create CRM object
     self.crm = dss.client.CRM(_context, crm, app_name='app_angel_sim.py', desc='Angel sim application', app_id=app_id)
@@ -172,10 +174,10 @@ class AppAngelSim():
 # Setup the DSS info stream thread
   def setup_dss_info_stream(self):
     #Get info port from DSS
-    info_port = self.drone.get_port('info_pub_port')
-    if info_port:
+    self.drone_info_port = self.drone.get_port('info_pub_port')
+    if self.drone_info_port:
       self._dss_info_thread = threading.Thread(
-        target=self._main_info_dss, args=[self.drone._dss.ip, info_port])
+        target=self._main_info_dss, args=[self.drone_ip, self.drone_info_port])
       self._dss_info_thread_active = True
       self._dss_info_thread.start()
 
@@ -194,7 +196,7 @@ class AppAngelSim():
 # The main function for subscribing to info messages from the DSS.
   def _main_info_dss(self, ip, port):
     # Enable LLA stream
-    self.drone._dss.data_stream('LLA', True)
+    self.drone.enable_data_stream('LLA')
     # Enable waypoint subscription
     #self.drone.enable_data_stream('currentWP')
     # Create info socket and start listening thread
@@ -238,30 +240,68 @@ class AppAngelSim():
     _logger.info("Stopped thread and closed data socket")
 
 
+  #--------------------------------------------------------------------#
+  def setup_app_skara_socket(self, skara_id):
+    #Find all applications
+    app_skara_found = False
+    while not app_skara_found:
+      answer = self.crm.clients(filter=skara_id)
+      crm_clients = answer['clients']
+      for client in crm_clients:
+        if 'app_skara' in client['desc']:
+          self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req')
+          app_skara_found = True
+      if not app_skara_found:
+        _logger.info(f'App_skara not found, sleeping for 2 seconds')
+        time.sleep(2.0)
+
+  def send_follow_her(self):
+    dss_id = self.drone.get_id()
+    # Create message
+    call = 'follow_her'
+    msg = {'fcn': call, 'id': self.crm.app_id, 'enable': True, 'target_id': dss_id, 'capabilities': 'SPOTLIGHT'}
+    answer = self._app_skara_socket.send_and_receive(msg)
+    # handle nack
+    if not dss.auxiliaries.zmq.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    # return
+    #
+    return
+
 
   #--------------------------------------------------------------------#
   # Main function
   def main(self, mission):
+    #Launch app skara
+    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1"])
+    if dss.auxiliaries.zmq.is_nack(answer):
+      _logger.error('Unable to launch app_skara')
+    # Setup connection to app_skara
+    self.setup_app_skara_socket(answer['id'])
     # Get a drone with the right capabilities
     answer = self.crm.get_drone(capabilities=self.drone_capabilities)
+
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
       return
 
     # Connect to the drone, set app_id in socket
+    self.drone_ip = answer['ip']
     try:
-      self.drone.connect(answer['ip'], answer['port'], app_id=self.crm.app_id)
+      self.drone.connect(self.drone_ip, answer['port'], app_id=self.crm.app_id)
       _logger.info("Connected as owner of drone: [%s]", self.drone._dss.dss_id)
     except dss.auxiliaries.exception.Nack:
       _logger.error("Failed to connect as owner, check crm")
       return
-
     # Setup info and data stream to DSS
     self.setup_dss_info_stream()
     #self.setup_dss_data_stream()
 
     # Send a command to the connected drone and print the result
     _logger.info(self.drone._dss.get_info())
+
+    # Request app_skara to follow the drone
+    self.send_follow_her()
 
     # Request controls from PILOT
     _logger.info("Requesting controls")
@@ -270,7 +310,7 @@ class AppAngelSim():
 
     # Initialization
     self.drone.try_set_init_point('drone')
-    self.drone.set_geofence(1, 230, 650)
+    self.drone.set_geofence(1, 30, 650)
 
     # Upload mission
     if "lat" in mission["id0"]:
@@ -313,7 +353,7 @@ class AppAngelSim():
 #--------------------------------------------------------------------#
   def _main():
     # parse command-line arguments
-    parser = argparse.ArgumentParser(description='APP "app map"', allow_abbrev=False, add_help=False)
+    parser = argparse.ArgumentParser(description='APP "app angel sim"', allow_abbrev=False, add_help=False)
     parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
     parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
     parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
