@@ -172,10 +172,12 @@ class AppSkara():
           answer = request(msg)
         else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+        is_ack = dss.auxiliaries.zmq.is_ack(answer)
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
-        if dss.auxiliaries.zmq.is_ack(answer):
+        if is_ack:
           self._task_msg = msg
+          self._task_event.set()
       except:
         pass
     self._app_socket.close()
@@ -226,9 +228,6 @@ class AppSkara():
       if msg is not None:
         pub_socket.publish(topic, msg)
       time.sleep(0.1)
-
-
-
 
 #--------------------------------------------------------------------#
 # Application reply: 'follow_her'
