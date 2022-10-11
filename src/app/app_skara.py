@@ -52,16 +52,6 @@ _context = zmq.Context()
 class AppSkara():
   # Init
   def __init__(self, app_ip, app_id, crm, drone_capabilities, n_drones, owner):
-    # Create a dummy drones object
-    self.drones = {}
-    # Create roles involved depending on number of drones that should be used
-    if n_drones == 1:
-      self.roles = ["Above"]
-    else:
-      self.roles = ["East", "West"]
-    for role in self.roles:
-      self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
-
     # Create CRM object
     self.crm = dss.client.CRM(_context, crm, app_name='app_skara.py', desc='SkarApp for following cyclist', app_id=app_id)
 
@@ -92,6 +82,31 @@ class AppSkara():
     # Register with CRM (self.crm.app_id is first available after the register call)
     answer = self.crm.register(self._app_ip, self._app_socket.port)
     self._app_id = answer['id']
+    #Threads
+    self._her_lla_subscriber = None
+    self._her_lla_data = None
+    self._last_msg_received = time.time()
+    self._her_lla_time_threshold = 3.0
+    self.her_lla_thread = threading.Thread(target=self._her_lla_listener, daemon=True)
+    self.her_lla_thread.start()
+    # Create a dummy drones object
+    self.drones = {}
+    self.lla_publishers = {}
+    self.lla_threads = {}
+    self.lla_publishers_timing = {}
+    # Create roles involved depending on number of drones that should be used
+    if n_drones == 1:
+      self.roles = ["Above"]
+    else:
+      self.roles = ["East", "West"]
+    for role in self.roles:
+      self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
+      self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
+      #Setup a "modified" LLA-stream thread based on the role of the drone
+      self.lla_publishers_timing[role] = time.time()
+      self.lla_threads[role] =threading.Thread(target=self._her_lla_publisher, args=(role,))
+      self.lla_threads[role].start()
+
 
     # All nack reasons raises exception, registration is successful
     _logger.info('App %s listening on %s:%d', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
@@ -100,10 +115,6 @@ class AppSkara():
     # Update socket labels with received id
     self._app_socket.add_id_to_label(self.crm.app_id)
     self._info_socket.add_id_to_label(self.crm.app_id)
-
-    #Threads
-    self._her_lla_subscriber = None
-    self.her_lla_thread = threading.Thread(target=self._her_lla_listener, daemon=True)
     # start task thread
     self._main_task_thread = threading.Thread(target=self._main_task, daemon=True)
     # create initial task
@@ -207,27 +218,27 @@ class AppSkara():
       req_socket = dss.auxiliaries.zmq.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
       info_pub_port = self._get_info_port(req_socket)
     self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "info-her" + self.app_id)
-    self._her_lla_subscriber_active = True
 
   def _her_lla_listener(self):
     while self.alive:
-      if self._her_lla_subscriber_active:
+      if self._her_lla_subscriber is not None:
         try:
           (topic, msg) = self._her_lla_subscriber.recv()
           if topic == "LLA":
             self._her_lla_data = msg
+            self._last_msg_received = time.time()
         except:
           pass
 
-  def _her_lla_publisher(self, role, pub_socket:dss.auxiliaries.zmq.Pub):
+  def _her_lla_publisher(self, role):
+    _logger.debug(f'Running LLA publisher for role: {role}')
+    topic = 'LLA'
     while self.alive:
-      topic = 'LLA'
-      msg = None
-      if role == 'Above':
+      if self._her_lla_data is not None and self._last_msg_received != self.lla_publishers_timing[role]:
+        self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
         msg = copy.deepcopy(self._her_lla_data)
-      if msg is not None:
-        pub_socket.publish(topic, msg)
-      time.sleep(0.1)
+        self.lla_publishers[role].publish(topic, msg)
+      time.sleep(0.05)
 
 #--------------------------------------------------------------------#
 # Application reply: 'follow_her'
@@ -262,11 +273,11 @@ class AppSkara():
 
   def _follow_her(self, msg):
     if not msg['enable']:
-      self._her_subscriber_lla_active = False
+      self._her_lla_subscriber = None
       for drone in self.drones.values():
         drone.disable_follow_stream()
         drone.abort()
-        self.alive = False
+        self._alive = False
     else:
       #Setup LLA listener to her
       self.setup_her_lla_subscriber()
@@ -275,16 +286,20 @@ class AppSkara():
         drone_received = False
         while not drone_received:
           answer = self.crm.get_drone(capabilities=self.drone_capabilities)
-          if dss.auxiliaries.zmq.is_ack(answer):
+          if not dss.auxiliaries.zmq.is_ack(answer):
             _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
             time.sleep(2.0)
+          else:
+            drone_received=True
         drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
-        #Setup a "modified" LLA-stream thread based on the role of the drone
-        lla_publisher = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
-        lla_pub_thread = threading.Thread(self._her_lla_publisher, args=[role, lla_publisher])
-        lla_pub_thread.start()
+        #Await controls
+        _logger.debug('WAITING FOR CONTROLS')
+        drone.await_controls()
+        # Takeoff
+        drone.try_set_init_point()
+        drone.arm_and_takeoff(height=5.0)
         #Enable follow stream
-        drone.enable_follow_stream(self._app_ip, lla_publisher.port)
+        drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
 #--------------------------------------------------------------------#
