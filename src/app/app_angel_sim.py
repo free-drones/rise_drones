@@ -48,7 +48,6 @@ _context = zmq.Context()
 
 class AppAngelSim():
   # Init
-
   def __init__(self, app_ip, app_id, crm, drone_capabilities):
     # Create Client object
     self.drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
@@ -90,7 +89,7 @@ class AppAngelSim():
 
     # All nack reasons raises exception, registration is successful
     _logger.info('App %s listening on %s:%d', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
-    _logger.info(f'App_template_photo_mission registered with CRM: {self.crm.app_id}')
+    _logger.info(f'App_angel_sim registered with CRM: {self.crm.app_id}')
 
     # Update socket labels with received id
     self._app_socket.add_id_to_label(self.crm.app_id)
@@ -238,17 +237,16 @@ class AppAngelSim():
         pass
     data_socket.close()
     _logger.info("Stopped thread and closed data socket")
-
-
   #--------------------------------------------------------------------#
   def setup_app_skara_socket(self, skara_id):
     #Find all applications
     app_skara_found = False
     while not app_skara_found:
       answer = self.crm.clients(filter=skara_id)
-      crm_clients = answer['clients']
-      for client in crm_clients:
-        if 'app_skara' in client['desc']:
+      _logger.info(answer)
+      if len(answer['clients']) > 0:
+        client = answer['clients'][0]
+        if client['ip'] and client['port']:
           self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req')
           app_skara_found = True
       if not app_skara_found:
@@ -267,8 +265,6 @@ class AppAngelSim():
     # return
     #
     return
-
-
   #--------------------------------------------------------------------#
   # Main function
   def main(self, mission):
@@ -295,14 +291,14 @@ class AppAngelSim():
       return
     # Setup info and data stream to DSS
     self.setup_dss_info_stream()
-    #self.setup_dss_data_stream()
 
     # Send a command to the connected drone and print the result
     _logger.info(self.drone._dss.get_info())
 
     # Request app_skara to follow the drone
     self.send_follow_her()
-
+    # Wait for other drones to launch
+    time.sleep(20.0)
     # Request controls from PILOT
     _logger.info("Requesting controls")
     self.drone.await_controls()
@@ -310,7 +306,7 @@ class AppAngelSim():
 
     # Initialization
     self.drone.try_set_init_point('drone')
-    self.drone.set_geofence(1, 30, 650)
+    self.drone.set_geofence(1, 30, 1000)
 
     # Upload mission
     if "lat" in mission["id0"]:
@@ -351,63 +347,62 @@ class AppAngelSim():
       self.drone.rtl()
 
 #--------------------------------------------------------------------#
-  def _main():
-    # parse command-line arguments
-    parser = argparse.ArgumentParser(description='APP "app angel sim"', allow_abbrev=False, add_help=False)
-    parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
-    parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
-    parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
-    parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
-    parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
-    parser.add_argument('--log', type=str, default='debug', help='logging threshold')
-    parser.add_argument('--mission', type=str, default='Mission_lla.json')
-    parser.add_argument('--owner', type=str, help='id of the instance controlling the app- not used in this use case')
-    parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
-    args = parser.parse_args()
+def _main():
+  # parse command-line arguments
+  parser = argparse.ArgumentParser(description='APP "app angel sim"', allow_abbrev=False, add_help=False)
+  parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
+  parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
+  parser.add_argument('--capabilities', type=str, default=None, nargs='*', help='If any specific capability is required')
+  parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
+  parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
+  parser.add_argument('--log', type=str, default='debug', help='logging threshold')
+  parser.add_argument('--mission', type=str, default='Mission_lla.json')
+  parser.add_argument('--owner', type=str, help='id of the instance controlling the app- not used in this use case')
+  parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
+  args = parser.parse_args()
 
-    # Identify subnet to sort log files in structure
-    subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
-    # Initiate log file
-    dss.auxiliaries.logging.configure('app_mission', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
+  # Identify subnet to sort log files in structure
+  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  # Initiate log file
+  dss.auxiliaries.logging.configure('app_mission', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
+  print("HEJ")
+  # Create the PhotoMission class
+  try:
+    app = AppAngelSim(args.app_ip, args.id, args.crm, args.capabilities)
+  except dss.auxiliaries.exception.NoAnswer:
+    _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
+    sys.exit()
+  except:
+    _logger.error('Failed to instantiate application\n%s', traceback.format_exc())
+    sys.exit()
 
-    # Create the PhotoMission class
-    try:
-      app = AppAngelSim(args.app_ip, args.id, args.crm, args.capabilities)
-    except dss.auxiliaries.exception.NoAnswer:
-      _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
-      sys.exit()
-    except:
-      _logger.error('Failed to instantiate application\n%s', traceback.format_exc())
-      sys.exit()
+  # load mission from file
+  with open(args.mission, encoding='utf-8') as handle:
+    mission = json.load(handle)
+  if "source_file" in mission:
+    mission.pop("source_file")
 
-    # load mission from file
-    with open(args.mission, encoding='utf-8') as handle:
-      mission = json.load(handle)
-    if "source_file" in mission:
-      mission.pop("source_file")
+  _logger.debug(json.dumps(mission, indent=2))
 
-    _logger.debug(json.dumps(mission, indent=2))
+  # Try to setup objects and initial sockets
+  try:
+    # Try to run main
+    app.main(mission)
+  except KeyboardInterrupt:
+    print('', end='\r')
+    _logger.warning('Shutdown due to keyboard interrupt')
+  except dss.auxiliaries.exception.Nack as error:
+    _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+  except dss.auxiliaries.exception.NoAnswer as error:
+    _logger.error(f'NoAnswer when sending: {error.fcn} to {error.ip}:{error.port}')
+  except:
+    _logger.error(f'unexpected exception\n{traceback.format_exc()}')
 
-    # Try to setup objects and initial sockets
-    try:
-      # Try to run main
-      app.main(mission)
-    except KeyboardInterrupt:
-      print('', end='\r')
-      _logger.warning('Shutdown due to keyboard interrupt')
-    except dss.auxiliaries.exception.Nack as error:
-      _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-    except dss.auxiliaries.exception.NoAnswer as error:
-      _logger.error(f'NoAnswer when sending: {error.fcn} to {error.ip}:{error.port}')
-    except:
-      _logger.error(f'unexpected exception\n{traceback.format_exc()}')
+  try:
+    app.kill()
+  except:
+    _logger.error(f'unexpected exception\n{traceback.format_exc()}')
 
-    try:
-      app.kill()
-    except:
-      _logger.error(f'unexpected exception\n{traceback.format_exc()}')
-
-
-  #--------------------------------------------------------------------#
-  if __name__ == '__main__':
-    _main()
+#--------------------------------------------------------------------#
+if __name__ == '__main__':
+  _main()
