@@ -257,7 +257,7 @@ class AppAngelSim():
     dss_id = self.drone.get_id()
     # Create message
     call = 'follow_her'
-    msg = {'fcn': call, 'id': self.crm.app_id, 'enable': enable, 'target_id': dss_id, 'capabilities': 'SPOTLIGHT'}
+    msg = {'fcn': call, 'id': self.crm.app_id, 'enable': enable, 'target_id': dss_id, 'capabilities': ['SPOTLIGHT', 'SIM']}
     answer = self._app_skara_socket.send_and_receive(msg)
     # handle nack
     if not dss.auxiliaries.zmq.is_ack(answer, call):
@@ -269,7 +269,7 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
     #Launch app skara
-    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1", '--capabilities', 'SPOTLIGHT'])
+    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1"])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
