@@ -205,7 +205,7 @@ class AppSkara():
     return answer['info_pub_port']
 
   def setup_her_lla_subscriber(self):
-    if 'dss' in self.her['id']:
+    if 'dss' in self.her_id:
       drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       drone.connect_as_guest(self.her['ip'], self.her['port'], app_id=self.app_id)
       drone.enable_data_stream('LLA')
@@ -252,7 +252,8 @@ class AppSkara():
     else:
       answer = self.crm.clients(filter=msg['target_id'])
       if len(answer['clients']) > 0:
-        self.her = answer['clients'][0]
+        self.her_id = msg['target_id']
+        self.her = answer['clients'][self.her_id]
         answer = dss.auxiliaries.zmq.ack(fcn)
       else:
         descr = 'target_id not found'

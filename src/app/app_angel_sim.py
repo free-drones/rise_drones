@@ -245,7 +245,7 @@ class AppAngelSim():
       answer = self.crm.clients(filter=skara_id)
       _logger.info(answer)
       if len(answer['clients']) > 0:
-        client = answer['clients'][0]
+        client = answer['clients'][skara_id]
         if client['ip'] and client['port']:
           self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req')
           app_skara_found = True

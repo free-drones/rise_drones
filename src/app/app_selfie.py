@@ -205,9 +205,9 @@ class Selfie():
     # Get rep port of target drone
 
     answer = self.crm.clients(filter=her)
-    client = answer['clients'][0]
-    her_ip = client['ip']
-    her_rep_port = client['port']
+    clients = answer['clients']
+    her_ip = clients[her]['ip']
+    her_rep_port = clients[her]['port']
 
     # Connect to her, the target drone
     drone_her = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
