@@ -305,7 +305,7 @@ class Monitor():
           if not self.client_in_list(client['id'], self.clients):
             if client['ip'] != '':
               if "[SIM]" in client['desc']:
-                client['sim_real'] = "simulated"
+                client['sim_real'] = "simulation"
                 client['drone_name'] = "RISE-" + client['id']
                 client['drone_type'] = 'air'
               elif "HX" in client['desc']:
