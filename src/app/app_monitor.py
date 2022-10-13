@@ -304,7 +304,7 @@ class Monitor():
             if client['ip'] != '':
               if "[SIM]" in client['desc']:
                 client['sim_real'] = "simulation"
-                client['drone_name'] = "RISE-" + client['id']
+                client['drone_name'] = "RISE-" + client_id
                 client['drone_type'] = 'air'
               elif "HX" in client['desc']:
                 client['sim_real'] = "real"
@@ -312,14 +312,14 @@ class Monitor():
                 client['drone_type'] = 'air'
               else:
                 client['sim_real'] = "real"
-                client['drone_name'] = "RISE-"+client['id']
+                client['drone_name'] = "RISE-"+ client_id
                 client['drone_type'] = "air"
               self.clients[client_id]=client
               print(f'Client {client_id}, {client} added to the list')
-              self.setup_client(client)
+              self.setup_client(client_id)
               self.print_clients()
             else:
-              print(client['id'] + " has no ip, not adding to list..")
+              print(client_id + " has no ip, not adding to list..")
 
         # Figure if there is a client on our local list that is not in the CRM-list -> pop
         index = 0
