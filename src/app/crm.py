@@ -136,7 +136,7 @@ class CRM:
   def _get_clients(self, filter='') -> dict:
     client_list = {}
     for id_, client in self._clients.items():
-      if filter in id_:
+      if filter in id_ and client['ip'] and client['port']:
         client_list[id_] = client
     return client_list
 
