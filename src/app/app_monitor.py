@@ -322,14 +322,12 @@ class Monitor():
               print(client_id + " has no ip, not adding to list..")
 
         # Figure if there is a client on our local list that is not in the CRM-list -> pop
-        index = 0
         for client_id in self.clients:
           if not self.client_in_dict(client_id, crm_clients):
             # Pop client, subscription will be ended and socket closed
-            self.clients.pop(index)
+            self.clients.pop(client_id)
             print('Client {the_client} popped from the list'.format(the_client=client_id))
             self.print_clients()
-          index += 1
       time.sleep(1)
       cursor_index += 1
       if cursor_index >= len(cursor):
