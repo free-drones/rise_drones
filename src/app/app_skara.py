@@ -264,8 +264,8 @@ class AppSkara():
             dir = -1
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, dist)
         else:
-          #Above drone use the same LLA-msg
-          modified_msg = her_lla
+          #Above drone only project
+          modified_msg = hdss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
         self.lla_publishers[role].publish(topic, modified_msg)
       time.sleep(0.05)
 

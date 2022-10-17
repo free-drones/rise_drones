@@ -66,13 +66,13 @@ def compute_lookahead_lla_reference(lla_1:dict, lla_2:dict, current_lla:dict, di
 
   proj_ned = project_point(ned_1, ned_2, ned_0)
   d_wp = math.sqrt(np.sum((ned_2-ned_1)**2))
-  if d_wp > 0 :
+  if d_wp > 0 and distance > 0:
     # Compute new coordinates for lookahead (North, East)
     proj_ned = proj_ned + dir*(distance/d_wp)*(ned_2-ned_1)
-    proj_lla = ned_to_lla(proj_ned, current_lla)
-    ref_lla = copy.deepcopy(current_lla)
-    # Compute the lookahead latitude and longitude
-    ref_lla["lat"] = current_lla["lat"] + proj_lla[0]
-    ref_lla["lon"]= current_lla["lon"] + proj_lla[1]
-    #ref_lla["alt"] = proj_lla[2]
+  proj_lla = ned_to_lla(proj_ned, current_lla)
+  ref_lla = copy.deepcopy(current_lla)
+  # Compute the lookahead latitude and longitude
+  ref_lla["lat"] = current_lla["lat"] + proj_lla[0]
+  ref_lla["lon"]= current_lla["lon"] + proj_lla[1]
+  #ref_lla["alt"] = proj_lla[2]
   return ref_lla
