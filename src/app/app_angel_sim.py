@@ -269,7 +269,7 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
     #Launch app skara
-    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1"])
+    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1", "--road=../../../rise_drones_dev/mission/missions/road_ref_skara.json"])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
@@ -316,7 +316,7 @@ class AppAngelSim():
 
     # take-off
     _logger.info("Take off")
-    self.drone.arm_and_takeoff(min(30, mission["id0"]["alt"]))
+    self.drone.arm_and_takeoff(max(2.5, min(30, mission["id0"]["alt"])))
     self.drone.reset_dss_srtl()
     # Fly waypoints, allow PILOT intervention.
     current_wp = 0
