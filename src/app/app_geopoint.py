@@ -47,7 +47,7 @@ class AppGeo():
     self.drone = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
 
     # Create CRM object
-    self.crm = dss.client.CRM(_context, crm, app_name='app_lmd.py', desc='LMD mission', app_id=app_id)
+    self.crm = dss.client.CRM(_context, crm, app_name='app_geopoint.py', desc='Geopoint mission', app_id=app_id)
 
     self._alive = True
     self._dss_data_thread = None
