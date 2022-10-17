@@ -34,24 +34,21 @@ _logger = logging.getLogger('dss.app_skara')
 _context = zmq.Context()
 
 #--------------------------------------------------------------------#
-# App mission - README.
-# This application is used to perform a mission. Input
-# parameters are:
-# 1. start_wp : Where the drone should start
-# 2. mission: The json-file containing the mission
-# 3. capabilities: List of capabilities required to perform the mission
+# App skara- README.
+# This application is used to follow a cyclist using one or two drones.
+# Input parameters are
+# 1. n_drones : The number of drones to use
+# 2. road: The json-file containing the positions that define the road
 
 #
-# The application to connect to crm and allocate a drone
-# (if available), it also shows how you can make the drone publish
-# information and how to subscribe to it.
+# The application to connect to crm and await a "follow_her" command
 # Quit application by calling kill() or Ctrl+C
 #
 # #--------------------------------------------------------------------#
 
 class AppSkara():
   # Init
-  def __init__(self, app_ip, app_id, crm, n_drones, owner):
+  def __init__(self, app_ip, app_id, crm, road, n_drones, owner):
     # Create CRM object
     self.crm = dss.client.CRM(_context, crm, app_name='app_skara.py', desc='SkarApp for following cyclist', app_id=app_id)
 
@@ -91,11 +88,16 @@ class AppSkara():
     self.lla_publishers = {}
     self.lla_threads = {}
     self.lla_publishers_timing = {}
-    # Create roles involved depending on number of drones that should be used
+    #Cyclist state {"Leaving", "Returning"}
+    self.cyclist_state = "Leaving"
+    self.road = road
+    #Compute the heading reference for the cyclist in "Leaving" state
+    self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
+     # Create roles involved depending on number of drones that should be used
     if n_drones == 1:
       self.roles = ["Above"]
     else:
-      self.roles = ["East", "West"]
+      self.roles = ["Above", "Ahead"]
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
@@ -103,6 +105,12 @@ class AppSkara():
       self.lla_publishers_timing[role] = time.time()
       self.lla_threads[role] =threading.Thread(target=self._her_lla_publisher, args=(role,))
       self.lla_threads[role].start()
+      #Above drone subscriber
+      self._above_drone_lla_subscriber = None
+      self._above_drone_lla_data = None
+      self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
+      self._above_drone_lla_thread.start()
+
 
 
     # All nack reasons raises exception, registration is successful
@@ -216,6 +224,20 @@ class AppSkara():
       info_pub_port = self._get_info_port(req_socket)
     self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "info-her" + self.app_id)
 
+  def _above_drone_lla_listener(self):
+    while self.alive:
+      if self._above_drone_lla_subscriber is not None:
+        try:
+          (topic, msg) = self._above_drone_lla_subscriber.recv()
+          if topic == "LLA":
+            self._above_drone_lla_data = msg
+            if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
+              self.cyclist_state = "Leaving"
+            else:
+              self.cyclist_state = "Returning"
+        except:
+          pass
+
   def _her_lla_listener(self):
     while self.alive:
       if self._her_lla_subscriber is not None:
@@ -233,8 +255,18 @@ class AppSkara():
     while self.alive:
       if self._her_lla_data is not None and self._last_msg_received != self.lla_publishers_timing[role]:
         self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
-        msg = copy.deepcopy(self._her_lla_data)
-        self.lla_publishers[role].publish(topic, msg)
+        her_lla = copy.deepcopy(self._her_lla_data)
+        if role == "Ahead":
+          #TODO add distance as parameter?
+          dist = 20
+          dir = 1
+          if self.cyclist_state == "Returning":
+            dir = -1
+          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, dist)
+        else:
+          #Above drone use the same LLA-msg
+          modified_msg = her_lla
+        self.lla_publishers[role].publish(topic, modified_msg)
       time.sleep(0.05)
 
 #--------------------------------------------------------------------#
@@ -290,6 +322,11 @@ class AppSkara():
           else:
             drone_received=True
         drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
+        if role == "Above":
+          info_port = drone.get_port('info_pub_port')
+          drone.enable_data_stream('LLA')
+          self._above_drone_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, answer['ip'], info_port, "info above")
+
         #Await controls
         _logger.debug('WAITING FOR CONTROLS')
         drone.await_controls()
@@ -341,6 +378,7 @@ def _main():
   parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
+  parser.add_argument('--road', type=str, required=True, help='File containing the positions of the road')
   parser.add_argument('--owner', type=str, help='id of the instance controlling the app')
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
@@ -350,9 +388,14 @@ def _main():
   # Initiate log file
   dss.auxiliaries.logging.configure('app_skara', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
-  # Create the PhotoMission class
+  # load mission from file
+  with open(args.road, encoding='utf-8') as handle:
+    road = json.load(handle)
+  if "source_file" in road:
+    road.pop("source_file")
+  # Create the AppSkara class
   try:
-    app = AppSkara(args.app_ip, args.id, args.crm, args.n_drones, args.owner)
+    app = AppSkara(args.app_ip, args.id, args.crm, road, args.n_drones, args.owner)
   except dss.auxiliaries.exception.NoAnswer:
     _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
     sys.exit()
