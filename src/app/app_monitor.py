@@ -31,7 +31,7 @@ _context = zmq.Context()
 class Monitor():
   def __init__(self, app_ip, app_id, crm, mqtt_agent):
     # Import the client lib
-    dss.client.Client.__init__(self, timeout=2, exception_handler=None, context=_context)
+    dss.client.Client.__init__(self, timeout=2000, exception_handler=None, context=_context)
 
     self.crm = dss.client.CRM(_context, crm, app_name='app_monitor.py', desc='Monitor application', app_id=app_id)
     #self._app_id = self.crm.app_id
