@@ -325,7 +325,7 @@ class Client:
     final_height = height+start_height
     self._dss.arm_take_off(final_height)
     current_height = start_height
-    while current_height < final_height * 0.9:
+    while not self._dss.get_idle():
       time.sleep(1.0)
       self.raise_if_aborted(app_allowed=False)
       try:
@@ -335,8 +335,6 @@ class Client:
       finally:
         rel_height = current_height-start_height
         print('Current height relative takeoff position: %5.1f m' % rel_height, end='\r')
-    #Sleep to make sure that drone is finished...
-    time.sleep(1.5)
     print('\033[K', end='\r') # clear to the end of line
 
 
