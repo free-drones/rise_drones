@@ -255,6 +255,7 @@ class AppMission():
 
   def perform_action(self, phase):
     if phase == "post takeoff":
+      self.drone.reset_dss_srtl()
       if self.mission_type == "continuous_photo":
         self.drone.set_gimbal(0, -90, 0)
     if phase == "at start_wp":
@@ -271,10 +272,19 @@ class AppMission():
         with open('metadata_LLA.json', "w") as fh:
           fh.write(json.dumps(json_metadata, indent=4))
         _logger.info('Metadata saved to metadata_LLA.json')
-
+    elif phase == "mission complete":
+      if self.mission_type == "continuous_photo":
+        self.perform_action("rtl")
+      elif self.mission_type != "continous_photo":
+        self.perform_action("dss srtl")
     elif phase == "rtl":
+      _logger.info("Autopilot rtl, will land straight down if within 20m from init point")
+      self.drone.rtl()
       if self.mission_type == "continuous_photo":
         self.disable_continuous_photo()
+    elif phase == "dss srtl":
+      _logger.info("DSS SRTL, will track flown waypoints back and land")
+      self.drone.dss_srtl(2)
 
   def disable_continuous_photo(self):
     _logger.info("Disabling continuous photo")
@@ -332,7 +342,6 @@ class AppMission():
     _logger.info("Take off")
     self.drone.arm_and_takeoff(min(30, mission["id0"]["alt"]))
     self.perform_action("post takeoff")
-    self.drone.reset_dss_srtl()
     # Fly waypoints, allow PILOT intervention.
     current_wp = self.start_wp
     while True:
@@ -357,12 +366,11 @@ class AppMission():
         # Mission is completed
         break
 
-    # rtl if not already on ground
+    # Trigger mission complete if not already on ground (PILOT landed)
     if self.drone.is_armed():
-      _logger.info("Autopilot rtl, will land straight down if within 20m from init point")
-      self.perform_action("rtl")
-      self.drone.rtl()
+      self.perform_action("mission complete")
 
+    # Landed
     self.perform_action("landed")
 
 #--------------------------------------------------------------------#

@@ -453,7 +453,7 @@ class Client:
     print('\033[K', end='\r') # clear to the end of line
 
   # Engage dss srtl and wait for idle
-  def dss_srtl(self, hover_time):
+  def dss_srtl(self, hover_time=2):
     self._dss.dss_srtl(hover_time)
     height = 0.0
     while self._dss.get_armed():
@@ -465,9 +465,6 @@ class Client:
       finally:
         print('Altitude: %5.1f m' % height, end='\r')
       time.sleep(1.0)
-    #Wait for the task to finish. Does not use raise if aborted since operator will take controls
-    self.await_idling(raise_if_aborted=False)
-    self._in_controls = False
     print('\033[K', end='\r') # clear to the end of line
 
   # Get drone armed state
