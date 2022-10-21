@@ -529,11 +529,9 @@ response of the clients command, :ref:`fcnclients`.
   :linenos:
 
   {
-    "clients": {
-      "dss001": {"name": "hx-003", "desc": "Drone, green", "type": "dss", "owner": "da001", "ip": "<ip>", "port": 5789},
-      "dss002": {"name": "hx-004", "desc": "Drone, blue", "type": "dss", "owner": "crm", "ip": "<ip>", "port": 5789},
-      "da20": {"name": "AppKeyboard", "desc": "test application for debugging", "type": "da", "owner": "crm", "ip": "<ip>", "port": 5789}
-    }
+    "dss001": {"name": "hx-003", "desc": "Drone, green", "type": "dss", "owner": "da001", "ip": "<ip>", "port": 5789},
+    "dss002": {"name": "hx-004", "desc": "Drone, blue", "type": "dss", "owner": "crm", "ip": "<ip>", "port": 5789},
+    "da20": {"name": "AppKeyboard", "desc": "test application for debugging", "type": "da", "owner": "crm", "ip": "<ip>", "port": 5789}
   }
 
 
