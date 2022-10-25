@@ -23,7 +23,7 @@ __status__ = 'development'
 def lla_to_ned(lla:dict, lla_origin:dict):
   # Transform to euclidean frame (origin = lla_origin)
   north = (lla["lat"] - lla_origin["lat"])*1852*60
-  east = (lla["lat"] - lla_origin["lat"])*1852*60*math.cos(lla_origin["lat"]/180*math.pi)
+  east = (lla["lon"] - lla_origin["lon"])*1852*60*math.cos(lla_origin["lat"]/180*math.pi)
   down = -lla["alt"]
   return np.array([north, east, down])
 
