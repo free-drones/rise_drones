@@ -475,6 +475,7 @@ class TYRApp:
 #----                                                            ----#
   # Update tyramote ip and ports
   def get_and_save_tyramote_info(self):
+    # Update to use crm lib TODO
     call = 'clients'
     msg = {'fcn': call, 'id': self._app_id, 'filter': self._tyramote_id}
     answer = self._crm_socket.send_and_receive(msg)
@@ -482,11 +483,13 @@ class TYRApp:
       _logger.error(f'clients failed')
       self.kill()
       return
-    client = answer['clients'][0]
-    if client['id'] != self._tyramote_id:
+    if not self._tyramote_id in answer['clients']:
       _logger.error(f'owner not found')
       self.kill()
       return
+
+    client = answer['clients'][self._tyramote_id]
+
 
     # Update ip and port info, then connect to TYRAmote
     self._tyramote_ip = client['ip']
