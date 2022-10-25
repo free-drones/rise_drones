@@ -1766,6 +1766,57 @@ Streams of information can be controlled using the function
 together with the corresponding attribute as topic. The format for
 each attribute is described in the following sections.
 
+.. _STATE:
+
+STATE - State data
+~~~~~~~~~~~~~~~~~~~
+
+.. compatibility:: badge
+  :ardupilot: -
+  :dji: -
+
+The state data is published with topic "STATE". The message contains a
+combination of other streams and most often covers the need of information.
+Although, avoid using this message if not nessesary since it will add load to
+the network. example.
+
+Lat, long [Decimal degrees]; Alt [m AMSL]; Heading [degrees relative true
+north]; Agl [m] above ground, -1 if not valid; . velx, vely, velz [m/s] in body
+frame and gnss_state [0-6] with mapping described below.
+
+
+.. code-block:: json
+  :caption: GNSS_STATE look up table
+  :linenos:
+
+  {
+    ["NO_GPS",
+    "NO_FIX",
+    "GPS_OK_FIX_2D",
+    "GPS_OK_FIX_3D",
+    "GPS_OK_FIX_3D_DGPS",
+    "GPS_OK_FIX_3D_RTK_FLOAT",
+    "GPS_OK_FIX_3D_RTK_FIXED"]
+  }
+
+
+
+.. code-block:: json
+  :caption: Info-socket: Topic ``STATE``
+  :linenos:
+
+  {
+    "lat": -0.0018926148768514395,
+    "long": 0.0014366497052833438,
+    "alt": 28.3,
+    "heading": 359,
+    "agl": -1,
+    "velx": 2.2,
+    "vely": 0,
+    "velz": -1,
+    "gnss_state": 3
+  }
+
 .. _ATT:
 
 ATT - Attitude data
