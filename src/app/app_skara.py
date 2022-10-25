@@ -222,7 +222,7 @@ class AppSkara():
       #Request socket to another application
       req_socket = dss.auxiliaries.zmq.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
       info_pub_port = self._get_info_port(req_socket)
-    self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "info-her" + self.app_id)
+    self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "her-info")
 
   def _above_drone_lla_listener(self):
     while self.alive:

@@ -349,6 +349,7 @@ def _main():
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
   parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
   parser.add_argument('--mqtt_agent', action='store_true', help='enable MQTT sensor reporting (level 1 agent) to WARA-PS core system')
+  parser.add_argument('--owner', type=str, help='id of the instance controlling app_monitor - not used in this use case')
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
