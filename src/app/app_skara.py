@@ -112,7 +112,9 @@ class AppSkara():
       self._above_drone_lla_thread.start()
 
 
-
+    # Data thread locks
+    self._above_data_lock = threading.Lock()
+    self._her_data_lock = threading.Lock()
     # All nack reasons raises exception, registration is successful
     _logger.info('App %s listening on %s:%d', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info(f'App_skara registered with CRM: {self.crm.app_id}')
@@ -230,7 +232,9 @@ class AppSkara():
         try:
           (topic, msg) = self._above_drone_lla_subscriber.recv()
           if topic == "LLA":
+            self._above_data_lock.acquire()
             self._above_drone_lla_data = msg
+            self._above_data_lock.release()
             if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
               self.cyclist_state = "Leaving"
             else:
@@ -244,10 +248,18 @@ class AppSkara():
         try:
           (topic, msg) = self._her_lla_subscriber.recv()
           if topic == "LLA":
+            self._her_data_lock.acquire()
             self._her_lla_data = msg
+            self._her_data_lock.release()
             self._last_msg_received = time.time()
         except:
           pass
+
+  def _get_her_lla(self):
+    self._her_data_lock.acquire()
+    msg = copy.deepcopy(self._her_lla_data)
+    self._her_data_lock.release()
+    return msg
 
   def _her_lla_publisher(self, role):
     _logger.debug(f'Running LLA publisher for role: {role}')
@@ -255,7 +267,7 @@ class AppSkara():
     while self.alive:
       if self._her_lla_data is not None and self._last_msg_received != self.lla_publishers_timing[role]:
         self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
-        her_lla = copy.deepcopy(self._her_lla_data)
+        her_lla = self._get_her_lla()
         if role == "Ahead":
           #TODO add distance as parameter?
           dist = 20
