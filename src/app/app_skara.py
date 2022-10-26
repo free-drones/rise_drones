@@ -105,11 +105,11 @@ class AppSkara():
       self.lla_publishers_timing[role] = time.time()
       self.lla_threads[role] =threading.Thread(target=self._her_lla_publisher, args=(role,))
       self.lla_threads[role].start()
-      #Above drone subscriber
-      self._above_drone_lla_subscriber = None
-      self._above_drone_lla_data = None
-      self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
-      self._above_drone_lla_thread.start()
+    #Above drone subscriber
+    self._above_drone_lla_subscriber = None
+    self._above_drone_lla_data = None
+    self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
+    self._above_drone_lla_thread.start()
 
 
     # Data thread locks
