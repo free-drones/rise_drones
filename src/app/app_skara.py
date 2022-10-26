@@ -270,7 +270,7 @@ class AppSkara():
         her_lla = self._get_her_lla()
         if role == "Ahead":
           #TODO add distance as parameter?
-          dist = 20
+          dist = 30
           dir = 1
           if self.cyclist_state == "Returning":
             dir = -1
@@ -295,7 +295,7 @@ class AppSkara():
     # Accept if target id in list from CRM
     else:
       answer = self.crm.clients(filter=msg['target_id'])
-      if len(answer['clients']) > 0:
+      if msg['target_id'] in answer['clients']:
         self.her_id = msg['target_id']
         self.her = answer['clients'][self.her_id]
         answer = dss.auxiliaries.zmq.ack(fcn)
