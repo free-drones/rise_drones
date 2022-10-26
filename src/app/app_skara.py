@@ -307,7 +307,7 @@ class AppSkara():
       for drone in self.drones.values():
         try:
           drone.disable_follow_stream()
-          drone.abort()
+          drone.dss_srtl()
         except dss.auxiliaries.exception.Nack:
           _logger.warning("Not able to disable properly..")
       self._alive = False
@@ -324,6 +324,7 @@ class AppSkara():
             time.sleep(2.0)
           else:
             drone_received=True
+        _logger.info(f"Received drone for role: {role}")
         drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
         if role == "Above":
           info_port = drone.get_port('info_pub_port')
@@ -333,10 +334,13 @@ class AppSkara():
         #Await controls
         _logger.debug('WAITING FOR CONTROLS')
         drone.await_controls()
-        # Takeoff
+        # Takeoff and reset DSS SRTL
         drone.try_set_init_point()
-        drone.arm_and_takeoff(height=5.0)
-        #Enable follow stream
+        drone.set_geofence(height_low=10, height_high=40, radius=500)
+        drone.arm_and_takeoff(height=30.0)
+        drone.reset_dss_srtl()
+        #Enable follow stream with pattern above
+        drone.set_pattern_above(rel_alt=25.0, heading='course')
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
