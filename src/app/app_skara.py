@@ -178,7 +178,6 @@ class AppSkara():
 #--------------------------------------------------------------------#
 # Application reply thread
   def _main_app_reply(self):
-    _logger.info('Reply socket is listening on: %d', self._app_socket.port)
     while self.alive:
       try:
         msg = self._app_socket.recv_json()
