@@ -579,7 +579,7 @@ class Hexacopter:
 
     vel_body_y = vel_e*math.cos(heading) - vel_n*math.sin(heading)
     vel_body_x = vel_e*math.sin(heading) + vel_n*math.cos(heading)
-    vel_body_z = -vel_d
+    vel_body_z = -vel_up
 
     return (vel_body_x, vel_body_y, vel_body_z)
 
