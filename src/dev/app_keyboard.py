@@ -33,10 +33,12 @@ class KeyboardClient(dss.client.Client):
   # Set up the sockets
   def setup_dss_sockets(self, dss_ip):
     answer = self._dss.get_info()
-    self._info_thread = threading.Thread(target=self._main_info_dss, args=[dss_ip, answer['info_pub_port']], daemon=True)
-    self._info_thread.start()
-    self._data_thread = threading.Thread(target=self._main_data_dss, args=[dss_ip, answer['data_pub_port']], daemon=True)
-    self._data_thread.start()
+    if answer['info_pub_port']:
+      self._info_thread = threading.Thread(target=self._main_info_dss, args=[dss_ip, answer['info_pub_port']], daemon=True)
+      self._info_thread.start()
+    if answer['data_pub_port']:
+      self._data_thread = threading.Thread(target=self._main_data_dss, args=[dss_ip, answer['data_pub_port']], daemon=True)
+      self._data_thread.start()
 
   # Helper method register
   def register_to_crm(self):
@@ -72,7 +74,7 @@ class KeyboardClient(dss.client.Client):
   # Thread that prints subscribed data
   def _main_info_dss(self, ip, port):
     _info_socket = dss.auxiliaries.zmq.Sub(self._context, ip, port, 'info ' + self._crm.app_id)
-    while _info_socket:
+    while _info_socket and self._dss is not None:
       try:
         (topic, msg) = _info_socket.recv()
 
@@ -102,7 +104,7 @@ class KeyboardClient(dss.client.Client):
   # Thread that reads subscribed data
   def _main_data_dss(self, ip, port):
     _data_socket = dss.auxiliaries.zmq.Sub(self._context, ip, port, 'data ' + self._crm.app_id)
-    while _data_socket:
+    while _data_socket and self._dss is not None:
       try:
         (topic, msg) = _data_socket.recv()
 
