@@ -92,6 +92,8 @@ class KeyboardClient(dss.client.Client):
           print("Going towards wp: " + msg['currentWP'] + ", final wp is: " + msg['finalWP'] + "\r")
         elif topic == "battery":
           print(f'Battery: remaining_time: {msg["remaining_time"]}, voltage: {msg["voltage"]} \r')
+        elif topic == "STATE":
+          print(f'lat: {msg["lat"]}, lon: {msg["lon"]}, alt: {msg["alt"]}, heading{msg["heading"]}, agl:{msg["agl"]}, vel_n:{msg["vel_n"]}, vele_e{msg["vel_e"]}, vel_d{msg["vel_d"]}, gnss_state{msg["gnss_state"]} \r')
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
       except:
@@ -551,6 +553,7 @@ class KeyboardClient(dss.client.Client):
               self._drone_name = answer['id']
               time.sleep(1.0)
               self.connect(answer['ip'], answer['port'], self._crm.app_id)
+              self.setup_dss_sockets(answer['ip'])
               print(f"Successfully connected to drone: [{self._drone_name}]")
         elif key == '6':
           if self._dss is not None:
@@ -564,6 +567,7 @@ class KeyboardClient(dss.client.Client):
               self._drone_name = answer['id']
               time.sleep(1.0)
               self.connect(answer['ip'], answer['port'], self._crm.app_id)
+              self.setup_dss_sockets(answer['ip'])
               print(f"Successfully connected to drone: [{self._drone_name}]")
         elif key == '7':
           if self._dss is not None:
