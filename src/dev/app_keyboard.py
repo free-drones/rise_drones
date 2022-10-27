@@ -92,6 +92,8 @@ class KeyboardClient(dss.client.Client):
           print("Going towards wp: " + msg['currentWP'] + ", final wp is: " + msg['finalWP'] + "\r")
         elif topic == "battery":
           print(f'Battery: remaining_time: {msg["remaining_time"]}, voltage: {msg["voltage"]} \r')
+        elif topic == "STATE":
+          print(f'lat: {msg["lat"]}, lon{msg["lon"]} \r')
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
       except:
