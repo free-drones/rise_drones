@@ -573,13 +573,17 @@ class Hexacopter:
     return self.vehicle.mode.name
 
   def get_body_vel(self, vel, heading):
+    #TODO Untested function
     vel_n = vel[0]
     vel_e = vel[1]
-    vel_up = vel[2] # TODO, is this vel up..?
+    vel_d = vel[2]
 
-    vel_body_y = vel_e*math.cos(heading) - vel_n*math.sin(heading)
-    vel_body_x = vel_e*math.sin(heading) + vel_n*math.cos(heading)
-    vel_body_z = -vel_up
+    alpha = heading/180*math.pi
+
+    #Rotate earth-fixed velocities to body fixed: V_b = Re->b*V_e
+    vel_body_x = vel_n*math.cos(alpha) + vel_e*math.sin(alpha)
+    vel_body_y = -vel_n*math.sin(alpha)+ vel_e*math.cos(alpha)
+    vel_body_z = vel_d
 
     return (vel_body_x, vel_body_y, vel_body_z)
 

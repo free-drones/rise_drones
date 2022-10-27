@@ -920,12 +920,12 @@ class Server:
       #print("Attitude callback sending log data:", json_msg)
     # LLA
     elif att_name == 'location.global_frame':
-      msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
-      self._pub_socket.publish('LLA', msg)
+      msg_LLA = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
+      self._pub_socket.publish('LLA', msg_LLA)
       if self._pub_attributes['STATE']['enabled']:
-        (vel_x, vel_y, vel_z) = self._hexa.get_body_vel(vehicle.velocity, vehicle.heading)
-        msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'velx': vel_x, 'vely': vel_y, 'velz': vel_z, 'gnss_state': self._hexa.gnss_state}
-        self._pub_socket.publish('STATE', msg)
+        # = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
+        msg_state = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vehicle.velocity[0], 'vel_e': vehicle.velocity[1], 'vel_d': vehicle.velocity[2], 'gnss_state': self._hexa.gnss_state}
+        self._pub_socket.publish('STATE', msg_state)
 
     # NED
     elif att_name == 'location.local_frame':
