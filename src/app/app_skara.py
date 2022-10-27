@@ -105,14 +105,16 @@ class AppSkara():
       self.lla_publishers_timing[role] = time.time()
       self.lla_threads[role] =threading.Thread(target=self._her_lla_publisher, args=(role,))
       self.lla_threads[role].start()
-      #Above drone subscriber
-      self._above_drone_lla_subscriber = None
-      self._above_drone_lla_data = None
-      self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
-      self._above_drone_lla_thread.start()
+    #Above drone subscriber
+    self._above_drone_lla_subscriber = None
+    self._above_drone_lla_data = None
+    self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
+    self._above_drone_lla_thread.start()
 
 
-
+    # Data thread locks
+    self._above_data_lock = threading.Lock()
+    self._her_data_lock = threading.Lock()
     # All nack reasons raises exception, registration is successful
     _logger.info('App %s listening on %s:%d', self.crm.app_id, self._app_socket.ip, self._app_socket.port)
     _logger.info(f'App_skara registered with CRM: {self.crm.app_id}')
@@ -176,7 +178,6 @@ class AppSkara():
 #--------------------------------------------------------------------#
 # Application reply thread
   def _main_app_reply(self):
-    _logger.info('Reply socket is listening on: %d', self._app_socket.port)
     while self.alive:
       try:
         msg = self._app_socket.recv_json()
@@ -230,7 +231,9 @@ class AppSkara():
         try:
           (topic, msg) = self._above_drone_lla_subscriber.recv()
           if topic == "LLA":
+            self._above_data_lock.acquire()
             self._above_drone_lla_data = msg
+            self._above_data_lock.release()
             if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
               self.cyclist_state = "Leaving"
             else:
@@ -244,10 +247,18 @@ class AppSkara():
         try:
           (topic, msg) = self._her_lla_subscriber.recv()
           if topic == "LLA":
+            self._her_data_lock.acquire()
             self._her_lla_data = msg
+            self._her_data_lock.release()
             self._last_msg_received = time.time()
         except:
           pass
+
+  def _get_her_lla(self):
+    self._her_data_lock.acquire()
+    msg = copy.deepcopy(self._her_lla_data)
+    self._her_data_lock.release()
+    return msg
 
   def _her_lla_publisher(self, role):
     _logger.debug(f'Running LLA publisher for role: {role}')
@@ -255,10 +266,10 @@ class AppSkara():
     while self.alive:
       if self._her_lla_data is not None and self._last_msg_received != self.lla_publishers_timing[role]:
         self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
-        her_lla = copy.deepcopy(self._her_lla_data)
+        her_lla = self._get_her_lla()
         if role == "Ahead":
           #TODO add distance as parameter?
-          dist = 20
+          dist = 30
           dir = 1
           if self.cyclist_state == "Returning":
             dir = -1
@@ -283,7 +294,7 @@ class AppSkara():
     # Accept if target id in list from CRM
     else:
       answer = self.crm.clients(filter=msg['target_id'])
-      if len(answer['clients']) > 0:
+      if msg['target_id'] in answer['clients']:
         self.her_id = msg['target_id']
         self.her = answer['clients'][self.her_id]
         answer = dss.auxiliaries.zmq.ack(fcn)
@@ -307,7 +318,7 @@ class AppSkara():
       for drone in self.drones.values():
         try:
           drone.disable_follow_stream()
-          drone.abort()
+          drone.dss_srtl()
         except dss.auxiliaries.exception.Nack:
           _logger.warning("Not able to disable properly..")
       self._alive = False
@@ -324,6 +335,7 @@ class AppSkara():
             time.sleep(2.0)
           else:
             drone_received=True
+        _logger.info(f"Received drone for role: {role}")
         drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
         if role == "Above":
           info_port = drone.get_port('info_pub_port')
@@ -333,10 +345,13 @@ class AppSkara():
         #Await controls
         _logger.debug('WAITING FOR CONTROLS')
         drone.await_controls()
-        # Takeoff
+        # Takeoff and reset DSS SRTL
         drone.try_set_init_point()
-        drone.arm_and_takeoff(height=5.0)
-        #Enable follow stream
+        drone.set_geofence(height_low=10, height_high=40, radius=500)
+        drone.arm_and_takeoff(height=30.0)
+        drone.reset_dss_srtl()
+        #Enable follow stream with pattern above
+        drone.set_pattern_above(rel_alt=25.0, heading='course')
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 

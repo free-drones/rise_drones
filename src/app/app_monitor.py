@@ -211,7 +211,7 @@ class Monitor():
     # print("Debug: New client ip and port: ", ip, port)
 
     # Connect the Request socket to enable the LLA stream
-    req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id)
+    req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id, timeout=2000)
     # Enable stream
     stream = 'LLA'
     self.enable_stream(stream,req_socket)
