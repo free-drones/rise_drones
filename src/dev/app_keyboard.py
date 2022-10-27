@@ -93,7 +93,7 @@ class KeyboardClient(dss.client.Client):
         elif topic == "battery":
           print(f'Battery: remaining_time: {msg["remaining_time"]}, voltage: {msg["voltage"]} \r')
         elif topic == "STATE":
-          print(f'lat: {msg["lat"]}, lon{msg["lon"]} \r')
+          print(f'lat: {msg["lat"]}, lon: {msg["lon"]}, alt: {msg["alt"]}, heading{msg["heading"]}, agl:{msg["agl"]}, vel_n:{msg["vel_n"]}, vele_e{msg["vel_e"]}, vel_d{msg["vel_d"]}, gnss_state{msg["gnss_state"]} \r')
         else:
           print("Topic not recognized on info link: ", (topic, msg), '\r')
       except:
