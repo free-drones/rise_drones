@@ -923,7 +923,7 @@ class Server:
       msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
       self._pub_socket.publish('LLA', msg)
       if self._pub_attributes['STATE']['enabled']:
-        (vel_x, vel_y, vel_z) = self._hexa.get get_body_vel(vehicle.velocity, vehicle.heading)
+        (vel_x, vel_y, vel_z) = self._hexa.get_body_vel(vehicle.velocity, vehicle.heading)
         msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'velx': vel_x, 'vely': vel_y, 'velz': vel_z, 'gnss_state': self._hexa.gnss_state}
         self._pub_socket.publish('STATE', msg)
 
