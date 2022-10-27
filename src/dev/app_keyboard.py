@@ -419,7 +419,8 @@ class KeyboardClient(dss.client.Client):
           print("Abort, unregister (CRM) and disconnect (DSS)")
           if self._dss is not None:
             self._crm.release_drone(self._drone_name)
-            self.close_dss_socket()
+            self._dss._socket.close()
+            self._dss = None
           self._crm.unregister()
           self._alive = False
           return
@@ -581,7 +582,8 @@ class KeyboardClient(dss.client.Client):
             else:
               # Close the DSS socket such that no heartbeat messages are sent.
               print(f"The drone with id {self._drone_name} has successfully been released")
-              self.close_dss_socket()
+              self._dss._socket.close()
+              self._dss = None
         elif key == '9':
           if self._dss is None:
             print("No connected drone")
