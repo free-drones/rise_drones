@@ -552,6 +552,7 @@ class KeyboardClient(dss.client.Client):
               self._drone_name = answer['id']
               time.sleep(1.0)
               self.connect(answer['ip'], answer['port'], self._crm.app_id)
+              self.setup_dss_sockets(answer['ip'])
               print(f"Successfully connected to drone: [{self._drone_name}]")
         elif key == '6':
           if self._dss is not None:
@@ -565,6 +566,7 @@ class KeyboardClient(dss.client.Client):
               self._drone_name = answer['id']
               time.sleep(1.0)
               self.connect(answer['ip'], answer['port'], self._crm.app_id)
+              self.setup_dss_sockets(answer['ip'])
               print(f"Successfully connected to drone: [{self._drone_name}]")
         elif key == '7':
           if self._dss is not None:
