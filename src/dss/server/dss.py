@@ -781,7 +781,7 @@ class Server:
         if not self._pub_attributes['LLA']['enabled']:
           msg_mod = msg
           msg_mod['stream'] = 'LLA'
-          self._request_data_stream(msg_mod)
+          return self._request_data_stream(msg_mod)
       if enable:
         self._hexa.vehicle.add_attribute_listener(self._pub_attributes[stream]['name'], self._attribute_listener)
         self._logger.info("Global listener added: %s", stream)
