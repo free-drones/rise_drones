@@ -106,7 +106,8 @@ class Server:
                             'photo_LLA':             {'enabled': False, 'name': 'TODO'},
                             'photo_XYZ':             {'enabled': False, 'name': 'TODO'},
                             'currentWP':             {'enabled': False, 'name': 'TODO'},
-                            'battery':               {'enabled': False, 'name': 'TODO'}}
+                            'battery':               {'enabled': False, 'name': 'TODO'},
+                            'STATE':                 {'enabled': False, 'name': None}}        # Trigger LLA subscription, but not twice. Handeled in _attribute_listener
 
 
     # create the hexacopter object
@@ -775,11 +776,20 @@ class Server:
       # Update publish attributes dict
       self._pub_attributes[stream]['enabled'] = enable
       # Activate publish of stream
+      if stream == 'STATE':
+        # STATE requires pos attribute listener. Make sure there is one enabled.
+        if not self._pub_attributes['LLA']['enabled']:
+          msg_mod = msg
+          msg_mod['stream'] = 'LLA'
+          self._request_data_stream(msg_mod)
       if enable:
         self._hexa.vehicle.add_attribute_listener(self._pub_attributes[stream]['name'], self._attribute_listener)
         self._logger.info("Global listener added: %s", stream)
       # Deactivate publish of stream
       else:
+        # STATE stream requires pos attribute listener.
+        if stream == 'LLA' and self._pub_attributes['STATE']['enabled']:
+          return dss.auxiliaries.zmq.nack(fcn, 'STATE stream is active')
         self._hexa.vehicle.remove_attribute_listener(self._pub_attributes[stream]['name'], self._attribute_listener)
         self._logger.info("Global listener removed: %s", stream)
     return answer
@@ -912,6 +922,11 @@ class Server:
     elif att_name == 'location.global_frame':
       msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
       self._pub_socket.publish('LLA', msg)
+      if self._attribute_listener['STATE']['enable']:
+        (vel_x, vel_y, vel_z) = self._hexa.get_body_vel(vehicle.velocity, vehicle.heading)
+        msg = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'velx': vel_x, 'vely': vel_y, 'velz': vel_z, 'gnss_state': self._hexa.gnss_state}
+        self._pub_socket.publish('LLA', msg)
+
     # NED
     elif att_name == 'location.local_frame':
       msg = {'north': msg.north, 'east': msg.east, 'down': msg.down, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'agl': -1}

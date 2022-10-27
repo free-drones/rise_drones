@@ -121,6 +121,7 @@ class KeyboardClient(dss.client.Client):
   def main(self):
     gimbal_pitch = 0
     att = False
+    state = False
     photo_lla = False
     photo_xyz = False
     battery = False
@@ -306,6 +307,7 @@ class KeyboardClient(dss.client.Client):
           print("  [w] up")
           print("  [W] set_alt 20")
           print("  [z] toggle data stream: currentWP")
+          print("  [Z] toggle data stream: STATE")
           print("  [x] toggle data stream: ATT")
           print("  [c] toggle data stream: XYZ")
           print("  [C] toggle data stream: photo_XYZ")
@@ -313,6 +315,7 @@ class KeyboardClient(dss.client.Client):
           print("  [b] toggle data stream: LLA")
           print("  [B] toggle data stream: photo_LLA")
           print("  [V] toggle data stream: battery")
+
 
         elif key == 'a':
           print("set_vel_BODY: neg yawrate")
@@ -445,6 +448,15 @@ class KeyboardClient(dss.client.Client):
             print("enable data stream: currentWP")
             self._dss.data_stream('currentWP', True)
             currentWP = True
+        elif key == 'Z':
+          if state:
+            print("disable data stream: STATE")
+            self._dss.data_stream('STATE', False)
+            state = False
+          else:
+            print("enable data stream: STATE")
+            self._dss.data_stream('STATE', True)
+            state = True
         elif key == 'x':
           if att:
             print("disable data stream: ATT")
