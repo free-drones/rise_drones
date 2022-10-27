@@ -1811,9 +1811,9 @@ frame and gnss_state [0-6] with mapping described below.
     "alt": 28.3,
     "heading": 359,
     "agl": -1,
-    "velx": 2.2,
-    "vely": 0,
-    "velz": -1,
+    "vel_n": 2.2,
+    "vel_e": 0,
+    "vel_d": -1.1,
     "gnss_state": 3
   }
 
