@@ -187,11 +187,11 @@ class Monitor():
       if drone_data :
         mqtt_agent.set_lla(drone_data['lat'], drone_data['lon'], drone_data['alt'])
         mqtt_agent.set_heading(drone_data['heading'])
-        if 'velocity' in drone_data:
-          speed = math.sqrt(drone_data['velocity'][0]**2 + drone_data['velocity'][1]**2)
+        if 'vel_n' in drone_data:
+          speed = math.sqrt(drone_data['vel_n']**2 + drone_data['vel_e']**2)
           mqtt_agent.set_speed(speed)
           if speed > 0.1 :
-            course = (180/math.pi)*math.atan2(drone_data['velocity'][1], drone_data['velocity'][0])
+            course = (180/math.pi)*math.atan2(drone_data['vel_e'], drone_data['vel_n'])
             mqtt_agent.set_course(course)
       mqtt_agent.send_heartbeat()
       mqtt_agent.send_sensor_info()
@@ -210,10 +210,10 @@ class Monitor():
     port = self.clients[drone_id]['port']
     # print("Debug: New client ip and port: ", ip, port)
 
-    # Connect the Request socket to enable the LLA stream
+    # Connect the Request socket to enable the STATE stream
     req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id, timeout=2000)
     # Enable stream
-    stream = 'LLA'
+    stream = 'STATE'
     self.enable_stream(stream,req_socket)
     # Get info port from DSS
     sub_port = self.get_port(req_socket, 'info_pub_port')
