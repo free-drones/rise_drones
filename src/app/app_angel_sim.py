@@ -29,7 +29,7 @@ __status__ = 'development'
 
 #--------------------------------------------------------------------#
 
-_logger = logging.getLogger('dss.app_mission')
+_logger = logging.getLogger('dss.app_angel_sim')
 _context = zmq.Context()
 
 #--------------------------------------------------------------------#
@@ -269,7 +269,7 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
     #Launch app skara
-    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=1", "--road=../../../rise_drones_dev/mission/missions/road_ref_skara.json"])
+    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=2", "--road=../../../rise_drones_dev/mission/missions/road_ref_skara.json"])
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
@@ -298,7 +298,11 @@ class AppAngelSim():
     # Request app_skara to follow the drone
     self.send_follow_her(enable=True)
     # Wait for other drones to launch
-    time.sleep(20.0)
+    sleep_time = 60
+    start_time = time.time()
+    while time.time() < start_time + sleep_time:
+      _logger.info(f"Waiting for drones to start, time remaining: {start_time + sleep_time - time.time()}")
+      time.sleep(1.0)
     # Request controls from PILOT
     _logger.info("Requesting controls")
     self.drone.await_controls()
@@ -365,8 +369,7 @@ def _main():
   # Identify subnet to sort log files in structure
   subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
   # Initiate log file
-  dss.auxiliaries.logging.configure('app_mission', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
-  print("HEJ")
+  dss.auxiliaries.logging.configure('app_angel_sim', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
   # Create the PhotoMission class
   try:
     app = AppAngelSim(args.app_ip, args.id, args.crm, args.capabilities)
