@@ -229,7 +229,7 @@ class AppSkara():
       drone.enable_data_stream('LLA')
       info_pub_port = drone.get_port('info_pub_port')
     else:
-      #Request socket to another application
+      #Request socket to another application (assumed LLA stream already started)
       req_socket = dss.auxiliaries.zmq.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
       info_pub_port = self._get_info_port(req_socket)
     self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "her-info")
@@ -297,6 +297,8 @@ class AppSkara():
         else:
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
+        #Use fixed altitude for smoother movements
+        modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]
         self.lla_publishers[role].publish(topic, modified_msg)
       time.sleep(0.05)
 
