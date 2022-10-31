@@ -181,17 +181,6 @@ class AppAngelSim():
       self._dss_info_thread.start()
 
 #--------------------------------------------------------------------#
-# Setup the DSS data stream thread
-  def setup_dss_data_stream(self):
-    #Get data port from DSS
-    data_port = self.drone.get_port('data_pub_port')
-    if data_port:
-      self._dss_data_thread = threading.Thread(
-        target=self._main_data_dss, args=[self.drone._dss.ip, data_port])
-      self._dss_data_thread_active = True
-      self._dss_data_thread.start()
-
-#--------------------------------------------------------------------#
 # The main function for subscribing to info messages from the DSS.
   def _main_info_dss(self, ip, port):
     # Enable LLA stream
@@ -208,35 +197,11 @@ class AppAngelSim():
         elif topic == 'battery':
           _logger.info('Remaining battery time: %s seconds', msg["remaining_time"])
         else:
-          _logger.info('Topic not recognized on info link: %s', topic)
+          _logger.debug('Topic not recognized on info link: %s', topic)
       except:
         pass
     info_socket.close()
     _logger.info("Stopped thread and closed info socket")
-
-#--------------------------------------------------------------------#
-# The main function for subscribing to data messages from the DSS.
-  def _main_data_dss(self, ip, port):
-    # Create data socket and start listening thread
-    data_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "data " + self.crm.app_id)
-    while self._dss_data_thread_active:
-      try:
-        (topic, msg) = data_socket.recv()
-        if topic in ('photo', 'photo_low'):
-          data = dss.auxiliaries.zmq.string_to_bytes(msg["photo"])
-          photo_filename = msg['metadata']['filename']
-          dss.auxiliaries.zmq.bytes_to_image(photo_filename, data)
-          json_filename = photo_filename[:-4] + ".json"
-          dss.auxiliaries.zmq.save_json(json_filename, msg['metadata'])
-          _logger.info("Photo saved to " + msg['metadata']['filename']  + "\r")
-          _logger.info("Photo metadata saved to " + json_filename + "\r")
-          self.transferred += 1
-        else:
-          _logger.info("Topic not recognized on data link: %s", topic)
-      except:
-        pass
-    data_socket.close()
-    _logger.info("Stopped thread and closed data socket")
   #--------------------------------------------------------------------#
   def setup_app_skara_socket(self, skara_id):
     #Find all applications
@@ -244,10 +209,10 @@ class AppAngelSim():
     while not app_skara_found:
       answer = self.crm.clients(filter=skara_id)
       _logger.info(answer)
-      if len(answer['clients']) > 0:
+      if skara_id in answer['clients']:
         client = answer['clients'][skara_id]
         if client['ip'] and client['port']:
-          self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req')
+          self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req', timeout=2000)
           app_skara_found = True
       if not app_skara_found:
         _logger.info(f'App_skara not found, sleeping for 2 seconds')
@@ -269,7 +234,7 @@ class AppAngelSim():
   # Main function
   def main(self, mission):
     #Launch app skara
-    answer = self.crm.launch_app('app_skara.py', extra_args=["--n_drones=2", "--road=../../../rise_drones_dev/mission/missions/road_ref_skara.json"])
+    answer = self.crm.launch_app('app_skara.py')
     if dss.auxiliaries.zmq.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
