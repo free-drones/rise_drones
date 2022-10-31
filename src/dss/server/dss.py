@@ -920,7 +920,7 @@ class Server:
       #print("Attitude callback sending log data:", json_msg)
     # LLA
     elif att_name == 'location.global_frame':
-      msg_LLA = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }
+      msg_LLA = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'agl': -1, 'heading': vehicle.heading }
       self._pub_socket.publish('LLA', msg_LLA)
       if self._pub_attributes['STATE']['enabled']:
         # = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'velocity': vehicle.velocity, 'gnss_state': self._hexa.gnss_state, 'agl': -1 }

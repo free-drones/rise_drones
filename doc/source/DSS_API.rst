@@ -1781,7 +1781,7 @@ Although, avoid using this message if not nessesary since it will add load to
 the network. example.
 
 Lat, long [Decimal degrees]; Alt [m AMSL]; Heading [degrees relative true
-north]; Agl [m] above ground, -1 if not valid; . velx, vely, velz [m/s] in body
+north]; Agl [m] above ground, -1 if not valid; . vel_n, vel_e, vel_d [m/s] in NED
 frame and gnss_state [0-6] with mapping described below.
 
 
