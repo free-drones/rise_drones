@@ -20,6 +20,7 @@ import zmq
 
 import dss.auxiliaries
 import dss.client
+import dss.auxiliaries.config
 
 #--------------------------------------------------------------------#
 
@@ -97,7 +98,15 @@ class AppSkara():
     if n_drones == 1:
       self.roles = ["Above"]
     else:
-      self.roles = ["Above", "Ahead"]
+      self.roles = ["Ahead", "Above"]
+    #Read parameters
+    self.ahead_distance = dss.auxiliaries.config.config['app_skara']['ahead_distance']
+    self.pattern_rel_alt = dss.auxiliaries.config.config['app_skara']['pattern_rel_alt']
+    self.geofence_height_min = dss.auxiliaries.config.config['app_skara']['geofence_height_min']
+    self.geofence_height_max = dss.auxiliaries.config.config['app_skara']['geofence_height_max']
+    self.geofence_radius = dss.auxiliaries.config.config['app_skara']['geofence_radius']
+    self.takeoff_height = dss.auxiliaries.config.config['app_skara']['takeoff_height']
+    self.above_pattern = "void"
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
@@ -234,6 +243,19 @@ class AppSkara():
             self._above_data_lock.acquire()
             self._above_drone_lla_data = msg
             self._above_data_lock.release()
+            #Check if above drone is close
+            if dss.auxiliaries.math.distance_2D(self.road['id0'], msg) < 2.0:
+              if self.above_pattern == "course":
+                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
+                self.above_pattern = 'absolute'
+            elif dss.auxiliaries.math.distance_2D(self.road['id1'], msg) < 2.0:
+              if self.above_pattern == "course":
+                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=(self.road_heading-180) % 360)
+                self.above_pattern = 'absolute'
+            else:
+              if self.above_pattern == "absolute":
+                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
+                self.above_pattern = 'course'
             if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
               self.cyclist_state = "Leaving"
             else:
@@ -268,12 +290,10 @@ class AppSkara():
         self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
         her_lla = self._get_her_lla()
         if role == "Ahead":
-          #TODO add distance as parameter?
-          dist = 30
           dir = 1
           if self.cyclist_state == "Returning":
             dir = -1
-          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, dist)
+          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, self.ahead_distance)
         else:
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
@@ -315,6 +335,7 @@ class AppSkara():
   def _follow_her(self, msg):
     if not msg['enable']:
       self._her_lla_subscriber = None
+      self.above_pattern = "void"
       for drone in self.drones.values():
         try:
           drone.disable_follow_stream()
@@ -347,11 +368,13 @@ class AppSkara():
         drone.await_controls()
         # Takeoff and reset DSS SRTL
         drone.try_set_init_point()
-        drone.set_geofence(height_low=10, height_high=40, radius=500)
-        drone.arm_and_takeoff(height=30.0)
+        drone.set_geofence(height_low=self.geofence_height_min, height_high=self.geofence_height_max, radius=self.geofence_radius)
+        drone.arm_and_takeoff(height=self.takeoff_height)
         drone.reset_dss_srtl()
         #Enable follow stream with pattern above
-        drone.set_pattern_above(rel_alt=25.0, heading='course')
+        drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
+        if role == "Above":
+          self.above_pattern = 'course'
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
@@ -392,11 +415,9 @@ def _main():
   parser = argparse.ArgumentParser(description='APP "app skara"', allow_abbrev=False, add_help=False)
   parser.add_argument('-h', '--help', action='help', help=argparse.SUPPRESS)
   parser.add_argument('--app_ip', type=str, help='ip of the app', required=True)
-  parser.add_argument('--n_drones', type=int, default=1, help='Number of drones used to track the cyclist')
   parser.add_argument('--id', type=str, default=None, help='id of this instance if started by crm')
   parser.add_argument('--crm', type=str, help='<ip>:<port> of crm', required=True)
   parser.add_argument('--log', type=str, default='debug', help='logging threshold')
-  parser.add_argument('--road', type=str, required=True, help='File containing the positions of the road')
   parser.add_argument('--owner', type=str, help='id of the instance controlling the app')
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
@@ -407,13 +428,15 @@ def _main():
   dss.auxiliaries.logging.configure('app_skara', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   # load mission from file
-  with open(args.road, encoding='utf-8') as handle:
+  road_str = dss.auxiliaries.config.config["app_skara"]["road_ref"]
+  with open(road_str, encoding='utf-8') as handle:
     road = json.load(handle)
   if "source_file" in road:
     road.pop("source_file")
+  n_drones = dss.auxiliaries.config.config["app_skara"]["n_drones"]
   # Create the AppSkara class
   try:
-    app = AppSkara(args.app_ip, args.id, args.crm, road, args.n_drones, args.owner)
+    app = AppSkara(args.app_ip, args.id, args.crm, road, n_drones, args.owner)
   except dss.auxiliaries.exception.NoAnswer:
     _logger.error('Failed to instantiate application: Probably the CRM couldn\'t be reached')
     sys.exit()
