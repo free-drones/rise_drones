@@ -139,7 +139,8 @@ class AppSkara():
 
     # Supported commands from ANY to APP
     self._commands = {'follow_her':   {'request': self._request_follow_her, 'task': self._follow_her},
-                      'get_info':     {'request': self._request_get_info, 'task': None}}
+                      'get_info':     {'request': self._request_get_info, 'task': None},
+                      'heart_beat':   {'request': self._request_heart_beat, 'task': None}}
 
 #--------------------------------------------------------------------#
   @property
@@ -331,6 +332,11 @@ class AppSkara():
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
     return answer
+
+  def _request_heart_beat(self, msg):
+    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    return answer
+
 
   def _follow_her(self, msg):
     if not msg['enable']:
