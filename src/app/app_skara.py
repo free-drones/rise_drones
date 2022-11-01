@@ -339,7 +339,6 @@ class AppSkara():
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
     return answer
 
-
   def _follow_her(self, msg):
     if not msg['enable']:
       self._her_lla_subscriber = None
