@@ -71,6 +71,7 @@ class AppSkara():
     self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
+    self._last_msg_received = time.time()
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
     self._app_reply_thread.start()
 
@@ -102,6 +103,7 @@ class AppSkara():
     #Read parameters
     self.ahead_distance = dss.auxiliaries.config.config['app_skara']['ahead_distance']
     self.pattern_rel_alt = dss.auxiliaries.config.config['app_skara']['pattern_rel_alt']
+    self.ahead_rel_alt_diff = dss.auxiliaries.config.config['app_skara']['ahead_rel_alt_diff']
     self.geofence_height_min = dss.auxiliaries.config.config['app_skara']['geofence_height_min']
     self.geofence_height_max = dss.auxiliaries.config.config['app_skara']['geofence_height_max']
     self.geofence_radius = dss.auxiliaries.config.config['app_skara']['geofence_radius']
@@ -147,6 +149,9 @@ class AppSkara():
   def alive(self):
     '''checks if application is alive'''
     return self._alive
+  @alive.setter
+  def alive(self, value):
+    self._alive = value
   @property
   def app_id(self):
     '''application id'''
@@ -157,7 +162,7 @@ class AppSkara():
 # Disconnect connected drones and unregister from crm, close ports etc..
   def kill(self):
     _logger.info("Closing down...")
-    self._alive = False
+    self.alive = False
     # Kill info and data thread
     self._dss_info_thread_active = False
     self._dss_data_thread_active = False
@@ -215,11 +220,13 @@ class AppSkara():
         else:
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         is_ack = dss.auxiliaries.zmq.is_ack(answer)
-        answer = json.dumps(answer)
-        self._app_socket.send_json(answer)
-        if is_ack:
+        if is_ack and self._commands[fcn]['task'] is not None:
+          _logger.debug("Setting task event")
           self._task_msg = msg
           self._task_event.set()
+          _logger.debug("task event set")
+        answer = json.dumps(answer)
+        self._app_socket.send_json(answer)
       except:
        if self._is_link_lost():
         self.alive = False
@@ -236,7 +243,7 @@ class AppSkara():
     # handle nack
     if not dss.auxiliaries.zmq.is_ack(answer, call):
       raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
-    if not 'info_pub_port' in msg:
+    if not 'info_pub_port' in answer:
       raise dss.auxiliaries.exception.Error('info pub port not provided')
     return answer['info_pub_port']
 
@@ -264,15 +271,18 @@ class AppSkara():
             #Check if above drone is close
             if dss.auxiliaries.math.distance_2D(self.road['id0'], msg) < 2.0:
               if self.above_pattern == "course":
-                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
+                for drone in self.drones.values():
+                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
                 self.above_pattern = 'absolute'
             elif dss.auxiliaries.math.distance_2D(self.road['id1'], msg) < 2.0:
               if self.above_pattern == "course":
-                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=(self.road_heading-180) % 360)
+                for drone in self.drones.values():
+                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=(self.road_heading-180) % 360)
                 self.above_pattern = 'absolute'
             else:
               if self.above_pattern == "absolute":
-                self.drones["Above"].set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
+                for drone in self.drones.values():
+                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
                 self.above_pattern = 'course'
             if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
               self.cyclist_state = "Leaving"
@@ -316,7 +326,8 @@ class AppSkara():
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
         #Use fixed altitude for smoother movements
-        modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]
+        alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
+        modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
         self.lla_publishers[role].publish(topic, modified_msg)
       time.sleep(0.05)
 
@@ -356,7 +367,9 @@ class AppSkara():
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
     return answer
 
+  # Task follow her
   def _follow_her(self, msg):
+    _logger.debug("TASK: FOLLOW HER")
     if not msg['enable']:
       self._her_lla_subscriber = None
       self.above_pattern = "void"
@@ -366,7 +379,7 @@ class AppSkara():
           drone.dss_srtl()
         except dss.auxiliaries.exception.Nack:
           _logger.warning("Not able to disable properly..")
-      self._alive = False
+      self.alive = False
     else:
       #Setup LLA listener to her
       self.setup_her_lla_subscriber()
@@ -408,6 +421,7 @@ class AppSkara():
     while self.alive:
       fcn = self._task_msg['fcn']
       if fcn:
+        _logger.debug(f"fcn: {fcn}")
         try:
           task = self._commands[fcn]['task']
           task(self._task_msg)
@@ -447,7 +461,8 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  crm_ip_port = args.crm.split(':')
+  subnet = dss.auxiliaries.zmq.get_subnet(port=int(crm_ip_port[1]))
   # Initiate log file
   dss.auxiliaries.logging.configure('app_skara', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
