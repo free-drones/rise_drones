@@ -80,11 +80,11 @@ class Monitor():
     self.mqtt_agent = mqtt_agent
     self._mqtt_threads = {}
     # Use pre-allocated IDs to remove ghost problem in mqtt
-    self.allocated_ids = {}
+    self.allocated_idxs = {}
     self.max_drones = 100
-    self.available_ids = []
+    self.available_idxs = []
     for ii in range(0, self.max_drones):
-      self.available_ids.append(ii)
+      self.available_idxs.append(ii)
 
 #--------------------------------------------------------------------#
   @property
@@ -241,7 +241,7 @@ class Monitor():
         elif topic == 'battery':
           self.battery_data[drone_id] = msg
         else:
-          _logger.info(f"Topic {topic} not recognized on info link {msg}")
+          pass
       except:
         pass
     #Remove the drone from the map
@@ -309,11 +309,11 @@ class Monitor():
           if not self.client_in_dict(client_id, self.clients):
             if client['ip'] != '':
               #Allocate an ID
-              self.allocated_ids[client_id] = min(self.available_ids)
-              self.available_ids.pop(self.allocated_ids[client_id])
+              lowest_idx = min(self.available_idxs)
+              self.allocated_idxs[client_id]=self.available_idxs.pop(lowest_idx)
               if "[SIM]" in client['desc']:
                 client['sim_real'] = "simulation"
-                client['drone_name'] = "RISE-" + self.allocated_ids[client_id]
+                client['drone_name'] = "RISE-" + '{index:03d}'.format(index=self.allocated_idxs[client_id])
                 client['drone_type'] = 'air'
               elif "HX" in client['desc']:
                 client['sim_real'] = "real"
@@ -321,7 +321,7 @@ class Monitor():
                 client['drone_type'] = 'air'
               else:
                 client['sim_real'] = "real"
-                client['drone_name'] = "RISE-"+ self.allocated_ids[client_id]
+                client['drone_name'] = "RISE-"+ '{index:03d}'.format(index=self.allocated_idxs[client_id])
                 client['drone_type'] = "air"
               self.clients[client_id]=client
               print(f'Client {client_id}, {client} added to the list')
@@ -339,8 +339,9 @@ class Monitor():
         # Pop clients from client list, subscription will be ended and socket closed
         for client_id in clients_to_pop:
           self.clients.pop(client_id)
-          self.available_ids.append(self.allocated_ids[client_id])
-          self.allocated_ids.pop(client_id)
+          current_idx = self.allocated_idxs[client_id]
+          self.available_idxs.append(current_idx)
+          self.allocated_idxs.pop(client_id)
           print('Client {the_client} popped from the list'.format(the_client=client_id))
           self.print_clients()
 
