@@ -79,6 +79,12 @@ class Monitor():
     self.battery_data = {}
     self.mqtt_agent = mqtt_agent
     self._mqtt_threads = {}
+    # Use pre-allocated IDs to remove ghost problem in mqtt
+    self.allocated_ids = {}
+    self.max_drones = 100
+    self.available_ids = []
+    for ii in range(0, self.max_drones):
+      self.available_ids.append(ii)
 
 #--------------------------------------------------------------------#
   @property
@@ -302,9 +308,12 @@ class Monitor():
         for client_id, client in crm_clients.items():
           if not self.client_in_dict(client_id, self.clients):
             if client['ip'] != '':
+              #Allocate an ID
+              self.allocated_ids[client_id] = min(self.available_ids)
+              self.available_ids.pop(self.allocated_ids[client_id])
               if "[SIM]" in client['desc']:
                 client['sim_real'] = "simulation"
-                client['drone_name'] = "RISE-" + client_id
+                client['drone_name'] = "RISE-" + self.allocated_ids[client_id]
                 client['drone_type'] = 'air'
               elif "HX" in client['desc']:
                 client['sim_real'] = "real"
@@ -312,7 +321,7 @@ class Monitor():
                 client['drone_type'] = 'air'
               else:
                 client['sim_real'] = "real"
-                client['drone_name'] = "RISE-"+ client_id
+                client['drone_name'] = "RISE-"+ self.allocated_ids[client_id]
                 client['drone_type'] = "air"
               self.clients[client_id]=client
               print(f'Client {client_id}, {client} added to the list')
@@ -330,6 +339,8 @@ class Monitor():
         # Pop clients from client list, subscription will be ended and socket closed
         for client_id in clients_to_pop:
           self.clients.pop(client_id)
+          self.available_ids.append(self.allocated_ids[client_id])
+          self.allocated_ids.pop(client_id)
           print('Client {the_client} popped from the list'.format(the_client=client_id))
           self.print_clients()
 
