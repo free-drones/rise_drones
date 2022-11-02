@@ -80,7 +80,7 @@ class AppSkara():
     #Threads
     self._her_lla_subscriber = None
     self._her_lla_data = None
-    self._last_msg_received = time.time()
+    self._her_last_msg_received = time.time()
     self._her_lla_time_threshold = 3.0
     self.her_lla_thread = threading.Thread(target=self._her_lla_listener, daemon=True)
     self.her_lla_thread.start()
@@ -185,6 +185,20 @@ class AppSkara():
   def from_owner(self, msg) -> bool:
     return msg['id'] == self._owner
 
+
+  # Function to handle if the link to the application is lost
+  def _is_link_lost(self):
+    link_lost = False
+    curr_time = time.time()
+    t_link_lost = 10.0
+    t_diff = curr_time - self._last_msg_received
+    if 0.5*t_link_lost < t_diff < t_link_lost:
+       _logger.warning("Application link degraded")
+    elif t_diff >= t_link_lost:
+      _logger.error("Application is disconnected")
+      link_lost = True
+    return link_lost
+
 #--------------------------------------------------------------------#
 # Application reply thread
   def _main_app_reply(self):
@@ -193,7 +207,8 @@ class AppSkara():
         msg = self._app_socket.recv_json()
         msg = json.loads(msg)
         fcn = msg['fcn'] if 'fcn' in msg else ''
-
+        if self.from_owner(msg):
+          self._last_msg_received = time.time()
         if fcn in self._commands:
           request = self._commands[fcn]['request']
           answer = request(msg)
@@ -206,7 +221,9 @@ class AppSkara():
           self._task_msg = msg
           self._task_event.set()
       except:
-        pass
+       if self._is_link_lost():
+        self.alive = False
+
     self._app_socket.close()
     _logger.info("Reply socket closed, thread exit")
 
@@ -273,7 +290,7 @@ class AppSkara():
             self._her_data_lock.acquire()
             self._her_lla_data = msg
             self._her_data_lock.release()
-            self._last_msg_received = time.time()
+            self._her_last_msg_received = time.time()
         except:
           pass
 
@@ -287,8 +304,8 @@ class AppSkara():
     _logger.debug(f'Running LLA publisher for role: {role}')
     topic = 'LLA'
     while self.alive:
-      if self._her_lla_data is not None and self._last_msg_received != self.lla_publishers_timing[role]:
-        self.lla_publishers_timing[role] = copy.deepcopy(self._last_msg_received)
+      if self._her_lla_data is not None and self._her_last_msg_received != self.lla_publishers_timing[role]:
+        self.lla_publishers_timing[role] = copy.deepcopy(self._her_last_msg_received)
         her_lla = self._get_her_lla()
         if role == "Ahead":
           dir = 1
