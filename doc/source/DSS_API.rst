@@ -1238,6 +1238,74 @@ via PWM set CAN_ID to 0.
   - Application is not in controls
   - Other action in execution
 
+.. _fcnsetspotlight:
+
+Fcn: ``set_spotlight``
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. compatibility:: badge
+  :ardupilot: -
+
+The function ``set_spotlight`` controls the spotlight payload. The key
+``enable`` indicates if the spotlight shall be enabled or not, the key
+``brightness`` sets the brightness of the spotlight, valid range is [1 100],
+although the brightness will be limited to 50 when on ground, function will
+return ack in this case.
+
+.. code-block:: json
+  :caption: Function call: ``set_spotlight``
+  :linenos:
+
+  {
+    "fcn": "set_spotlight",
+    "id": "<requestor id>",
+    "enable": true,
+    "brightness": 100
+  }
+
+**Nack reasons:**
+  - Requester is not the DSS owner
+  - Application is not in controls
+
+.. _fcngetspotlight:
+
+Fcn: ``get_spotlight``
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. compatibility:: badge
+  :ardupilot: -
+
+The function ``get_spotlight`` gets the spotlight payload status. If the
+spotligt acessory is available the DSS answers with ack and spotlight status
+keys ``enable`` and ``brightness``. If the spotlight accessory is not available,
+the DSS will answer with a nack.
+
+
+.. code-block:: json
+  :caption: Function call: ``get_spotlight``
+  :linenos:
+
+  {
+    "fcn": "get_spotlight",
+    "id": "<requestor id>"
+  }
+
+
+.. code-block:: json
+  :caption: Reply: ``get_spotlight``
+  :linenos:
+
+  {
+    "fcn": "ack",
+    "call": "get_spotlight",
+    "enable": true,
+    "brightness": 100
+  }
+
+
+**Nack reasons:**
+  - Spotlight is not available
+
 .. _fcnphoto:
 
 Fcn: ``photo``
