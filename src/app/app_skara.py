@@ -15,6 +15,7 @@ import threading
 import time
 import traceback
 import copy
+import queue
 
 import zmq
 
@@ -89,6 +90,7 @@ class AppSkara():
     self.drones = {}
     self.lla_publishers = {}
     self.lla_threads = {}
+    self.spotlight_enabled = {}
     self.lla_publishers_timing = {}
     #Cyclist state {"Leaving", "Returning"}
     self.cyclist_state = "Leaving"
@@ -108,9 +110,11 @@ class AppSkara():
     self.geofence_height_max = dss.auxiliaries.config.config['app_skara']['geofence_height_max']
     self.geofence_radius = dss.auxiliaries.config.config['app_skara']['geofence_radius']
     self.takeoff_height = dss.auxiliaries.config.config['app_skara']['takeoff_height']
+    self.spotlight_switch_distance = dss.auxiliaries.config.config['app_skara']['spotlight_switch_distance']
     self.above_pattern = "void"
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
+      self.spotlight_enabled[role] = False
       self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
       #Setup a "modified" LLA-stream thread based on the role of the drone
       self.lla_publishers_timing[role] = time.time()
@@ -121,6 +125,11 @@ class AppSkara():
     self._above_drone_lla_data = None
     self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
     self._above_drone_lla_thread.start()
+
+    #Spotlight thread
+    self.spotlight_queue = queue.SimpleQueue()
+    self._send_spotlight_thread = threading.Thread(target=self._task_send_spotlight)
+    self._send_spotlight_thread.start()
 
 
     # Data thread locks
@@ -203,6 +212,24 @@ class AppSkara():
       _logger.error("Application is disconnected")
       link_lost = True
     return link_lost
+
+  def _task_send_spotlight(self):
+    while self.alive:
+      msg = self.spotlight_queue.get()
+      role, type = msg.split(maxsplit=1)
+      if type == "enable":
+        try:
+          self.drones[role].enable_spotlight(brightness=100)
+          self.spotlight_enabled[role] = False
+        except dss.auxiliaries.exception.Nack as error:
+          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+      else:
+        try:
+          self.drones[role].disable_spotlight()
+          self.spotlight_enabled[role] = False
+        except dss.auxiliaries.exception.Nack as error:
+          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+
 
 #--------------------------------------------------------------------#
 # Application reply thread
@@ -329,6 +356,16 @@ class AppSkara():
         alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
         modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
         self.lla_publishers[role].publish(topic, modified_msg)
+        #Enable/disable spotlight?
+        if dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg) < self.spotlight_switch_distance:
+          if self.spotlight_enabled[role]:
+            #Send msg that the spotlight should be disabled in another thread
+            self.spotlight_queue.put(f'{role} disable')
+        else:
+          if not self.spotlight_enabled[role]:
+            #Send msg that the spotlight should be enabled in another thread
+            self.spotlight_queue.put(f'{role} enable')
+
       time.sleep(0.05)
 
 #--------------------------------------------------------------------#

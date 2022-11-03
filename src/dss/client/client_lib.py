@@ -471,6 +471,13 @@ class Client:
   def is_armed(self):
     return self._dss.get_armed()
 
+  #spotlight
+  def enable_spotlight(self, brightness):
+    self._dss.set_spotlight(True, brightness)
+
+  def disable_spotlight(self):
+    self._dss.set_spotlight(False)
+
   # Above pattern
   def set_pattern_above(self, rel_alt, heading):
     self._dss.set_pattern('above', rel_alt, heading)
