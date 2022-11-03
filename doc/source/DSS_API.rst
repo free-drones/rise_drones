@@ -1266,6 +1266,7 @@ return ack in this case.
 **Nack reasons:**
   - Requester is not the DSS owner
   - Application is not in controls
+  - Spotlight not installed
 
 .. _fcngetspotlight:
 
