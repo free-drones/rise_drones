@@ -357,6 +357,7 @@ class AppSkara():
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
           # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
+          _logger.info('Calc dist to home')
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
           cyclist_point.new_measurement(time.time(), dist_home)
         #Use fixed altitude for smoother movements
@@ -512,6 +513,7 @@ class Point():
     # Update filtered speed
     k = 2
     filt_speed_home = (k*filt_speed_home + speed_home)/(k+1)
+    _logger.info(f'filtered speed {filt_speed_home}')
     # Test if updated filtered speed triggers a switch
     switched_direction()
 
