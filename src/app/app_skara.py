@@ -126,11 +126,10 @@ class AppSkara():
     self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
     self._above_drone_lla_thread.start()
 
-    #Spotlight thread
-    self.spotlight_queue = queue.SimpleQueue()
-    self._send_spotlight_thread = threading.Thread(target=self._task_send_spotlight)
-    self._send_spotlight_thread.start()
-
+    #Background thread, used to send zmq commands to the drones without blocking LLA subscribers
+    self.background_task_queue = queue.SimpleQueue()
+    self._background_task_thread = threading.Thread(target=self._background_task_executor)
+    self._background_task_thread.start()
 
     # Data thread locks
     self._above_data_lock = threading.Lock()
@@ -213,22 +212,37 @@ class AppSkara():
       link_lost = True
     return link_lost
 
-  def _task_send_spotlight(self):
+  def _background_task_executor(self):
     while self.alive:
-      msg = self.spotlight_queue.get()
-      role, type = msg.split(maxsplit=1)
-      if type == "enable":
-        try:
-          self.drones[role].enable_spotlight(brightness=100)
-          self.spotlight_enabled[role] = False
-        except dss.auxiliaries.exception.Nack as error:
-          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-      else:
-        try:
-          self.drones[role].disable_spotlight()
-          self.spotlight_enabled[role] = False
-        except dss.auxiliaries.exception.Nack as error:
-          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+      msg = self.background_task_queue.get()
+      role, task, type = msg.split(maxsplit=2)
+      if task == 'spotlight':
+        if type == "enable" and not self.spotlight_enabled[role]:
+          try:
+            self.drones[role].enable_spotlight(brightness=100)
+            self.spotlight_enabled[role] = True
+          except dss.auxiliaries.exception.Nack as error:
+            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+        elif type == 'disable' and self.spotlight_enabled[role]:
+          try:
+            self.drones[role].disable_spotlight()
+            self.spotlight_enabled[role] = False
+          except dss.auxiliaries.exception.Nack as error:
+            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+      elif task == 'pattern':
+        if type == 'course' and self.above_pattern == 'absolute':
+          try:
+            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=type)
+            self.above_pattern = 'course'
+          except dss.auxiliaries.exception.Nack as error:
+            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+        elif type == 'absolute' and self.above_pattern == "course": #In this case, the heading is specified as an integer
+          try:
+            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=int(type))
+            self.above_pattern = 'absolute'
+          except dss.auxiliaries.exception.Nack as error:
+            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+
 
 
 #--------------------------------------------------------------------#
@@ -295,22 +309,19 @@ class AppSkara():
             self._above_data_lock.acquire()
             self._above_drone_lla_data = msg
             self._above_data_lock.release()
-            #Check if above drone is close
-            if dss.auxiliaries.math.distance_2D(self.road['id0'], msg) < 2.0:
+            #Check if drones should change pattern (close to or far from end points of the road)
+            if dss.auxiliaries.math.distance_2D(self.road['id0'], msg) < 3.0:
               if self.above_pattern == "course":
-                for drone in self.drones.values():
-                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
-                self.above_pattern = 'absolute'
-            elif dss.auxiliaries.math.distance_2D(self.road['id1'], msg) < 2.0:
+                for role in self.drones:
+                  self.background_task_queue.put(f'{role} pattern {self.road_heading}')
+            elif dss.auxiliaries.math.distance_2D(self.road['id1'], msg) < 3.0:
               if self.above_pattern == "course":
-                for drone in self.drones.values():
-                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=(self.road_heading-180) % 360)
-                self.above_pattern = 'absolute'
+                for role in self.drones:
+                  self.background_task_queue.put(f'{role} pattern {(self.road_heading-180) % 360}')
             else:
               if self.above_pattern == "absolute":
-                for drone in self.drones.values():
-                  drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
-                self.above_pattern = 'course'
+                for role in self.drones:
+                  self.background_task_queue.put(f'{role} pattern course')
             if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
               self.cyclist_state = "Leaving"
             else:
@@ -360,12 +371,11 @@ class AppSkara():
         if dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg) < self.spotlight_switch_distance:
           if self.spotlight_enabled[role]:
             #Send msg that the spotlight should be disabled in another thread
-            self.spotlight_queue.put(f'{role} disable')
+            self.background_task_queue.put(f'{role} spotlight disable')
         else:
           if not self.spotlight_enabled[role]:
             #Send msg that the spotlight should be enabled in another thread
-            self.spotlight_queue.put(f'{role} enable')
-
+            self.background_task_queue.put(f'{role} spotlight enable')
       time.sleep(0.05)
 
 #--------------------------------------------------------------------#
