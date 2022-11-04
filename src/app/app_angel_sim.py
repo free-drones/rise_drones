@@ -213,6 +213,7 @@ class AppAngelSim():
         client = answer['clients'][skara_id]
         if client['ip'] and client['port']:
           self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req', timeout=2000)
+          self._app_skara_socket.start_heartbeat(self.crm.app_id)
           app_skara_found = True
       if not app_skara_found:
         _logger.info(f'App_skara not found, sleeping for 2 seconds')
