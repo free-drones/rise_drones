@@ -92,8 +92,6 @@ class AppSkara():
     self.lla_threads = {}
     self.spotlight_enabled = {}
     self.lla_publishers_timing = {}
-    #Cyclist state {"Leaving", "Returning"}
-    self.cyclist_state = "Leaving"
     self.road = road
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
@@ -320,10 +318,6 @@ class AppSkara():
               if self.above_pattern == "absolute":
                 for role in self.drones:
                   self.background_task_queue.put(f'{role} pattern course')
-            if abs(dss.auxiliaries.math.compute_angle_difference(msg["heading"], self.road_heading)) < 90 :
-              self.cyclist_state = "Leaving"
-            else:
-              self.cyclist_state = "Returning"
         except:
           pass
 
@@ -348,6 +342,7 @@ class AppSkara():
 
   def _her_lla_publisher(self, role):
     _logger.debug(f'Running LLA publisher for role: {role}')
+    cyclist_point = Point(self.road_heading)
     topic = 'LLA'
     while self.alive:
       if self._her_lla_data is not None and self._her_last_msg_received != self.lla_publishers_timing[role]:
@@ -355,12 +350,15 @@ class AppSkara():
         her_lla = self._get_her_lla()
         if role == "Ahead":
           dir = 1
-          if self.cyclist_state == "Returning":
+          if cyclist_point.state == "Returning":
             dir = -1
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, self.ahead_distance)
         else:
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
+          # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
+          dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
+          cyclist_point.new_measurement(time.time(), dist_home)
         #Use fixed altitude for smoother movements
         alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
         modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
@@ -488,6 +486,51 @@ class AppSkara():
       if cursor_index >= len(cursor):
         cursor_index = 0
       print(cursor[cursor_index], end = '\r', flush=True)
+
+## The Point class that tracks the cyclist and triggers when cyclist switches direction
+## The class instance is fed with new measurements of distance to home.
+class Point():
+  # Init
+  def __init__(self, road_heading):
+    # Create CRM object
+    self.prev_time = time.time()
+    self.prev_distance = 0
+    self.filt_speed_home = 0
+    self.state = "Leaving"
+    self.trigger_speed = 1.2
+    self.road_heading = road_heading
+
+  def new_measurement(self, t, dist_home):
+    # Calc delta distance and delta time
+    delta_d = prev_distance - dist_home
+    delta_t = t - prev_time
+    # Store data for next calculation
+    prev_distance = dist_home
+    prev_time = t
+    # Calc raw speed
+    speed_home = delta_d/delta_t
+    # Update filtered speed
+    k = 2
+    filt_speed_home = (k*filt_speed_home + speed_home)/(k+1)
+    # Test if updated filtered speed triggers a switch
+    switched_direction()
+
+  def switched_direction(self):
+    # If cyclist is leaving
+    if filt_speed_home < -trigger_speed:
+      if state == "Returning":
+        # Cyclist has switched
+        state = "Leaving"
+        self.background_task_queue.put(f'all pattern {(road_heading)}')
+        _logger.info('Cyclist is now Leaving')
+    # If cyclist is returning
+    elif filt_speed_home > trigger_speed:
+      # Cyclist is returning
+      if state == "Leaving":
+        # Cyclist has switched
+        self.state = "Returning"
+        self.background_task_queue.put(f'all pattern {(road_heading-180) % 360}')
+        _logger.info('Cyclist is now Returning')
 
 #--------------------------------------------------------------------#
 def _main():
