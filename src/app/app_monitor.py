@@ -155,12 +155,12 @@ class Monitor():
 
   def print_clients(self):
     if len(self.clients) == 0:
-      print('\nThe current list of dss clients is empty')
+      _logger.info('\nThe current list of dss clients is empty')
     else:
-      print('\nThe current list of dss clients, [#](ID, NAME):')
+      _logger.info('\nThe current list of dss clients, [#](ID, NAME):')
       i = 1
       for client_id, client in self.clients.items():
-        print(f'  [{i}] {client_id, client["name"]}')
+        _logger.info(f'  [{i}] {client_id, client["name"]}')
         i += 1
 
 #--------------------------------------------------------------------#
@@ -310,7 +310,8 @@ class Monitor():
             if client['ip'] != '':
               #Allocate an ID
               lowest_idx = min(self.available_idxs)
-              self.allocated_idxs[client_id]=self.available_idxs.pop(lowest_idx)
+              self.allocated_idxs[client_id]= lowest_idx
+              self.available_idxs.remove(lowest_idx)
               if "[SIM]" in client['desc']:
                 client['sim_real'] = "simulation"
                 client['drone_name'] = "RISE-" + '{index:03d}'.format(index=self.allocated_idxs[client_id])
@@ -324,11 +325,11 @@ class Monitor():
                 client['drone_name'] = "RISE-"+ '{index:03d}'.format(index=self.allocated_idxs[client_id])
                 client['drone_type'] = "air"
               self.clients[client_id]=client
-              print(f'Client {client_id}, {client} added to the list')
+              _logger.info(f'Client {client_id}, {client} added to the list')
               self.setup_client(client_id)
               self.print_clients()
             else:
-              print(client_id + " has no ip, not adding to list..")
+              _logger.info(client_id + " has no ip, not adding to list..")
 
         # Figure if there is a client on our local list that is not in the CRM-list -> pop
         clients_to_pop = {}
@@ -342,7 +343,7 @@ class Monitor():
           current_idx = self.allocated_idxs[client_id]
           self.available_idxs.append(current_idx)
           self.allocated_idxs.pop(client_id)
-          print('Client {the_client} popped from the list'.format(the_client=client_id))
+          _logger.info('Client {the_client} popped from the list'.format(the_client=client_id))
           self.print_clients()
 
       time.sleep(1)
