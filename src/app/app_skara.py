@@ -236,9 +236,9 @@ class AppSkara():
             self.above_pattern = 'course'
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-        elif type == 'absolute' and self.above_pattern == "course": #In this case, the heading is specified as an integer
+        elif type != 'course' and self.above_pattern == "course": #In this case, the heading is specified as an integer
           try:
-            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=int(type))
+            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(type))
             self.above_pattern = 'absolute'
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
@@ -262,10 +262,8 @@ class AppSkara():
           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
         is_ack = dss.auxiliaries.zmq.is_ack(answer)
         if is_ack and self._commands[fcn]['task'] is not None:
-          _logger.debug("Setting task event")
           self._task_msg = msg
           self._task_event.set()
-          _logger.debug("task event set")
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -370,11 +368,9 @@ class AppSkara():
         #Enable/disable spotlight?
         if dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg) < self.spotlight_switch_distance:
           if self.spotlight_enabled[role]:
-            #Send msg that the spotlight should be disabled in another thread
             self.background_task_queue.put(f'{role} spotlight disable')
         else:
           if not self.spotlight_enabled[role]:
-            #Send msg that the spotlight should be enabled in another thread
             self.background_task_queue.put(f'{role} spotlight enable')
       time.sleep(0.05)
 
@@ -416,7 +412,6 @@ class AppSkara():
 
   # Task follow her
   def _follow_her(self, msg):
-    _logger.debug("TASK: FOLLOW HER")
     if not msg['enable']:
       self._her_lla_subscriber = None
       self.above_pattern = "void"
