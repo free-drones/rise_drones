@@ -342,7 +342,7 @@ class AppSkara():
 
   def _her_lla_publisher(self, role):
     _logger.debug(f'Running LLA publisher for role: {role}')
-    cyclist_point = Point(self.road_heading)
+    cyclist_point = Point(self.road_heading, self.background_task_queue)
     topic = 'LLA'
     while self.alive:
       if self._her_lla_data is not None and self._her_last_msg_received != self.lla_publishers_timing[role]:
@@ -360,6 +360,18 @@ class AppSkara():
           _logger.info('Calc dist to home')
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
           cyclist_point.new_measurement(time.time(), dist_home)
+
+
+          # If not sending the task queue to Point works..
+          # if cyclist_point.switched_direction():
+          #   if cyclist_point.state == "Returning":
+          #     self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
+          #     _logger.info('Cyclist is now Returning')
+          #   else:
+          #     self.background_task_queue.put(f'all pattern {self.road_heading}')
+          #     _logger.info('Cyclist is now Leaving')
+
+
         #Use fixed altitude for smoother movements
         alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
         modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
@@ -492,7 +504,7 @@ class AppSkara():
 ## The class instance is fed with new measurements of distance to home.
 class Point():
   # Init
-  def __init__(self, road_heading):
+  def __init__(self, road_heading, background_task_queue):
     # Create CRM object
     self.prev_time = time.time()
     self.prev_distance = 0
@@ -500,6 +512,7 @@ class Point():
     self.state = "Leaving"
     self.trigger_speed = 1.2
     self.road_heading = road_heading
+    self.background_task_queue = background_task_queue  # Not sure if this works.. otherwiise return bool on switched
 
   def new_measurement(self, t, dist_home):
     # Calc delta distance and delta time
@@ -512,26 +525,26 @@ class Point():
     speed_home = delta_d/delta_t
     # Update filtered speed
     k = 2
-    filt_speed_home = (k*filt_speed_home + speed_home)/(k+1)
-    _logger.info(f'filtered speed {filt_speed_home}')
+    self.filt_speed_home = (k*self.filt_speed_home + speed_home)/(k+1)
+    _logger.info(f'filtered speed {self.filt_speed_home}')
     # Test if updated filtered speed triggers a switch
-    switched_direction()
+    self.switched_direction()
 
   def switched_direction(self):
     # If cyclist is leaving
-    if filt_speed_home < -trigger_speed:
+    if self.filt_speed_home < -self.trigger_speed:
       if state == "Returning":
         # Cyclist has switched
         state = "Leaving"
-        self.background_task_queue.put(f'all pattern {(road_heading)}')
+        self.background_task_queue.put(f'all pattern {(self.road_heading)}')
         _logger.info('Cyclist is now Leaving')
     # If cyclist is returning
-    elif filt_speed_home > trigger_speed:
+    elif self.filt_speed_home > self.trigger_speed:
       # Cyclist is returning
       if state == "Leaving":
         # Cyclist has switched
         self.state = "Returning"
-        self.background_task_queue.put(f'all pattern {(road_heading-180) % 360}')
+        self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
         _logger.info('Cyclist is now Returning')
 
 #--------------------------------------------------------------------#
