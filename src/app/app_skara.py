@@ -79,6 +79,12 @@ class AppSkara():
     # Register with CRM (self.crm.app_id is first available after the register call)
     answer = self.crm.register(self._app_ip, self._app_socket.port)
     self._app_id = answer['id']
+
+    #Background thread, used to send zmq commands to the drones without blocking LLA subscribers
+    self.background_task_queue = queue.SimpleQueue()
+    self._background_task_thread = threading.Thread(target=self._background_task_executor)
+    self._background_task_thread.start()
+
     #Threads
     self._her_lla_subscriber = None
     self._her_lla_data = None
@@ -124,10 +130,7 @@ class AppSkara():
     self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
     self._above_drone_lla_thread.start()
 
-    #Background thread, used to send zmq commands to the drones without blocking LLA subscribers
-    self.background_task_queue = queue.SimpleQueue()
-    self._background_task_thread = threading.Thread(target=self._background_task_executor)
-    self._background_task_thread.start()
+
 
     # Data thread locks
     self._above_data_lock = threading.Lock()
