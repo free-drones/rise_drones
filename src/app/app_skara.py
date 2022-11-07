@@ -101,6 +101,7 @@ class AppSkara():
     self.road = road
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
+    self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
      # Create roles involved depending on number of drones that should be used
     if n_drones == 1:
       self.roles = ["Above"]
@@ -115,7 +116,6 @@ class AppSkara():
     self.geofence_radius = dss.auxiliaries.config.config['app_skara']['geofence_radius']
     self.takeoff_height = dss.auxiliaries.config.config['app_skara']['takeoff_height']
     self.spotlight_switch_distance = dss.auxiliaries.config.config['app_skara']['spotlight_switch_distance']
-    self.above_pattern = "void"
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       self.spotlight_enabled[role] = False
@@ -231,16 +231,13 @@ class AppSkara():
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
       elif task == 'pattern':
-        if type == 'course' and self.above_pattern == 'absolute':
+          if role == 'all':
+            roles = self.drone.keys()
+          else:
+            roles = [role]
           try:
-            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=type)
-            self.above_pattern = 'course'
-          except dss.auxiliaries.exception.Nack as error:
-            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-        elif type != 'course' and self.above_pattern == "course": #In this case, the heading is specified as an integer
-          try:
-            self.drones[role].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(type))
-            self.above_pattern = 'absolute'
+            for ro in roles:
+              self.drones[ro].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(type))
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
 
@@ -308,19 +305,6 @@ class AppSkara():
             self._above_data_lock.acquire()
             self._above_drone_lla_data = msg
             self._above_data_lock.release()
-            #Check if drones should change pattern (close to or far from end points of the road)
-            if dss.auxiliaries.math.distance_2D(self.road['id0'], msg) < 3.0:
-              if self.above_pattern == "course":
-                for role in self.drones:
-                  self.background_task_queue.put(f'{role} pattern {self.road_heading}')
-            elif dss.auxiliaries.math.distance_2D(self.road['id1'], msg) < 3.0:
-              if self.above_pattern == "course":
-                for role in self.drones:
-                  self.background_task_queue.put(f'{role} pattern {(self.road_heading-180) % 360}')
-            else:
-              if self.above_pattern == "absolute":
-                for role in self.drones:
-                  self.background_task_queue.put(f'{role} pattern course')
         except:
           pass
 
@@ -363,6 +347,11 @@ class AppSkara():
           _logger.info('Calc dist to home')
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
           cyclist_point.new_measurement(time.time(), dist_home)
+          #Have we reached the end of the road? Switch state before cyclist is actually returning
+          if cyclist_point.state == 'Leaving' and self.road_length-dist_home < 3.0:
+              cyclist_point.state = "Returning"
+              self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
+
 
 
           # If not sending the task queue to Point works..
@@ -428,7 +417,6 @@ class AppSkara():
   def _follow_her(self, msg):
     if not msg['enable']:
       self._her_lla_subscriber = None
-      self.above_pattern = "void"
       for drone in self.drones.values():
         try:
           drone.disable_follow_stream()
@@ -466,8 +454,6 @@ class AppSkara():
         drone.reset_dss_srtl()
         #Enable follow stream with pattern above
         drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
-        if role == "Above":
-          self.above_pattern = 'course'
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
@@ -536,15 +522,15 @@ class Point():
   def switched_direction(self):
     # If cyclist is leaving
     if self.filt_speed_home < -self.trigger_speed:
-      if state == "Returning":
+      if self.state == "Returning":
         # Cyclist has switched
-        state = "Leaving"
+        self.state = "Leaving"
         self.background_task_queue.put(f'all pattern {(self.road_heading)}')
         _logger.info('Cyclist is now Leaving')
     # If cyclist is returning
     elif self.filt_speed_home > self.trigger_speed:
       # Cyclist is returning
-      if state == "Leaving":
+      if self.state == "Leaving":
         # Cyclist has switched
         self.state = "Returning"
         self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
