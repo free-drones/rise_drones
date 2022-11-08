@@ -442,7 +442,7 @@ class AppSkara():
         drone.arm_and_takeoff(height=self.takeoff_height)
         drone.reset_dss_srtl()
         #Enable follow stream with pattern above
-        drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading='course')
+        drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
