@@ -122,7 +122,7 @@ class AppSkara():
       self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
       #Setup a "modified" LLA-stream thread based on the role of the drone
       self.lla_publishers_timing[role] = time.time()
-      self.lla_threads[role] =threading.Thread(target=self._her_lla_publisher, args=(role,))
+      self.lla_threads[role] = threading.Thread(target=self._her_lla_publisher, args=(role,))
       self.lla_threads[role].start()
     #Above drone subscriber
     self._above_drone_lla_subscriber = None
@@ -130,7 +130,8 @@ class AppSkara():
     self._above_drone_lla_thread = threading.Thread(target=self._above_drone_lla_listener)
     self._above_drone_lla_thread.start()
 
-
+    self.her_id = 'none'
+    self.her = None
 
     # Data thread locks
     self._above_data_lock = threading.Lock()
@@ -207,7 +208,7 @@ class AppSkara():
     t_link_lost = 10.0
     t_diff = curr_time - self._last_msg_received
     if 0.5*t_link_lost < t_diff < t_link_lost:
-       _logger.warning("Application link degraded")
+      _logger.warning("Application link degraded")
     elif t_diff >= t_link_lost:
       _logger.error("Application is disconnected")
       link_lost = True
@@ -216,30 +217,30 @@ class AppSkara():
   def _background_task_executor(self):
     while self.alive:
       msg = self.background_task_queue.get()
-      role, task, type = msg.split(maxsplit=2)
+      role, task, argument = msg.split(maxsplit=2)
       if task == 'spotlight':
-        if type == "enable" and not self.spotlight_enabled[role]:
+        if argument == "enable" and not self.spotlight_enabled[role]:
           try:
             self.drones[role].enable_spotlight(brightness=100)
             self.spotlight_enabled[role] = True
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
-        elif type == 'disable' and self.spotlight_enabled[role]:
+        elif argument == 'disable' and self.spotlight_enabled[role]:
           try:
             self.drones[role].disable_spotlight()
             self.spotlight_enabled[role] = False
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
       elif task == 'pattern':
-          if role == 'all':
-            roles = self.drone.keys()
-          else:
-            roles = [role]
-          try:
-            for ro in roles:
-              self.drones[ro].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(type))
-          except dss.auxiliaries.exception.Nack as error:
-            _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+        if role == 'all':
+          roles = self.drones.keys()
+        else:
+          roles = [role]
+        try:
+          for name in roles:
+            self.drones[name].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(argument))
+        except dss.auxiliaries.exception.Nack as error:
+          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
 
 
 
@@ -265,13 +266,13 @@ class AppSkara():
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
-       if self._is_link_lost():
-        self.alive = False
+        if self._is_link_lost():
+          self.alive = False
 
     self._app_socket.close()
     _logger.info("Reply socket closed, thread exit")
 
-  def _get_info_port(self, req_socket:dss.auxiliaries.zmq.Req):
+  def _get_info_port(self, req_socket: dss.auxiliaries.zmq.Req):
     call = 'get_info'
     # build message
     msg = {'fcn': call, 'id': self.app_id}
@@ -294,7 +295,7 @@ class AppSkara():
       #Request socket to another application (assumed LLA stream already started)
       req_socket = dss.auxiliaries.zmq.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
       info_pub_port = self._get_info_port(req_socket)
-    self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context,self.her['ip'], info_pub_port, "her-info")
+    self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, self.her['ip'], info_pub_port, "her-info")
 
   def _above_drone_lla_listener(self):
     while self.alive:
@@ -336,33 +337,21 @@ class AppSkara():
         self.lla_publishers_timing[role] = copy.deepcopy(self._her_last_msg_received)
         her_lla = self._get_her_lla()
         if role == "Ahead":
-          dir = 1
+          direction = 1
           if cyclist_point.state == "Returning":
-            dir = -1
-          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir, self.ahead_distance)
+            direction = -1
+          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, direction, self.ahead_distance)
         else:
           #Above drone only project
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
           # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
-          _logger.info('Calc dist to home')
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
           cyclist_point.new_measurement(time.time(), dist_home)
-          #Have we reached the end of the road? Switch state before cyclist is actually returning
-          if cyclist_point.state == 'Leaving' and self.road_length-dist_home < 3.0:
-              cyclist_point.state = "Returning"
+          if cyclist_point.switched_direction(dist_home):
+            if cyclist_point.state == "Returning":
               self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
-
-
-
-          # If not sending the task queue to Point works..
-          # if cyclist_point.switched_direction():
-          #   if cyclist_point.state == "Returning":
-          #     self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
-          #     _logger.info('Cyclist is now Returning')
-          #   else:
-          #     self.background_task_queue.put(f'all pattern {self.road_heading}')
-          #     _logger.info('Cyclist is now Leaving')
-
+            else:
+              self.background_task_queue.put(f'all pattern {self.road_heading}')
 
         #Use fixed altitude for smoother movements
         alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
@@ -436,7 +425,7 @@ class AppSkara():
             _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
             time.sleep(2.0)
           else:
-            drone_received=True
+            drone_received = True
         _logger.info(f"Received drone for role: {role}")
         drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
         if role == "Above":
@@ -493,7 +482,7 @@ class AppSkara():
 ## The class instance is fed with new measurements of distance to home.
 class Point():
   # Init
-  def __init__(self, road_heading, background_task_queue):
+  def __init__(self, road_heading, road_length):
     # Create CRM object
     self.prev_time = time.time()
     self.prev_distance = 0
@@ -501,31 +490,34 @@ class Point():
     self.state = "Leaving"
     self.trigger_speed = 1.2
     self.road_heading = road_heading
-    self.background_task_queue = background_task_queue  # Not sure if this works.. otherwiise return bool on switched
+    self.road_length = road_length  # Not sure if this works.. otherwise return bool on switched
 
   def new_measurement(self, t, dist_home):
     # Calc delta distance and delta time
-    delta_d = prev_distance - dist_home
-    delta_t = t - prev_time
+    delta_d = self.prev_distance - dist_home
+    delta_t = t - self.prev_time
     # Store data for next calculation
-    prev_distance = dist_home
-    prev_time = t
+    self.prev_distance = dist_home
+    self.prev_time = t
     # Calc raw speed
     speed_home = delta_d/delta_t
     # Update filtered speed
     k = 2
     self.filt_speed_home = (k*self.filt_speed_home + speed_home)/(k+1)
     _logger.info(f'filtered speed {self.filt_speed_home}')
-    # Test if updated filtered speed triggers a switch
-    self.switched_direction()
 
-  def switched_direction(self):
-    # If cyclist is leaving
-    if self.filt_speed_home < -self.trigger_speed:
+  def switched_direction(self, dist_home):
+    #Have we reached the end of the road? Switch state before cyclist is actually returning
+    switched = False
+    if self.state == 'Leaving' and self.road_length-dist_home < 3.0:
+      self.state = "Returning"
+      switched = True
+      _logger.info('End of road reached, cyclist is now Returning')
+    elif self.filt_speed_home < -self.trigger_speed:
       if self.state == "Returning":
         # Cyclist has switched
         self.state = "Leaving"
-        self.background_task_queue.put(f'all pattern {(self.road_heading)}')
+        switched = True
         _logger.info('Cyclist is now Leaving')
     # If cyclist is returning
     elif self.filt_speed_home > self.trigger_speed:
@@ -533,8 +525,9 @@ class Point():
       if self.state == "Leaving":
         # Cyclist has switched
         self.state = "Returning"
-        self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
+        switched = True
         _logger.info('Cyclist is now Returning')
+    return switched
 
 #--------------------------------------------------------------------#
 def _main():
