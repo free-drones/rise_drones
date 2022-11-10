@@ -179,6 +179,7 @@ class AppSkara():
     self._dss_data_thread_active = False
     self._info_socket.close()
     #Join threads
+    self._task_event.set()
     self._above_drone_lla_thread.join(timeout=1.0)
     self._background_task_thread.join(timeout=1.0)
     self.her_lla_thread.join(timeout=1.0)
@@ -222,6 +223,9 @@ class AppSkara():
 
   def _background_task_executor(self):
     while self.alive:
+      if self.background_task_queue.empty():
+        time.sleep(0.1)
+        continue
       msg = self.background_task_queue.get()
       role, task, argument = msg.split(maxsplit=2)
       if task == 'spotlight':
@@ -247,6 +251,7 @@ class AppSkara():
             self.drones[name].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(argument))
         except dss.auxiliaries.exception.Nack as error:
           _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+    _logger.info('Background task executor, thread exit')
 
 
 
@@ -314,6 +319,7 @@ class AppSkara():
             self._above_data_lock.release()
         except:
           pass
+    _logger.info("Above drone LLA listener, thread exit")
 
   def _her_lla_listener(self):
     while self.alive:
@@ -327,6 +333,7 @@ class AppSkara():
             self._her_last_msg_received = time.time()
         except:
           pass
+    _logger.info("Her LLA listener, thread exit")
 
   def _get_her_lla(self):
     self._her_data_lock.acquire()
@@ -370,6 +377,7 @@ class AppSkara():
           if not self.spotlight_enabled[role]:
             self.background_task_queue.put(f'{role} spotlight enable')
       time.sleep(0.05)
+    _logger.info(f"LLA publisher for {role}, thread exit")
 
 #--------------------------------------------------------------------#
 # Application reply: 'follow_her'
@@ -469,6 +477,7 @@ class AppSkara():
       if self.alive:
         self._task_event.clear()
         self._task_event.wait()
+    _logger.info("Main task executor, thread exit")
 
 
   #--------------------------------------------------------------------#
