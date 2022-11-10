@@ -435,6 +435,8 @@ class AppSkara():
         while not drone_received:
           # Dont get stuck during init if Skaramote is closed
           if self._is_link_lost():
+            _logger.warning('Link is lost during acquisition of drones')
+            self._task_event.set()
             return
           answer = self.crm.get_drone(capabilities=msg['capabilities'])
           if not dss.auxiliaries.zmq.is_ack(answer):
