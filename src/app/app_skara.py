@@ -223,10 +223,10 @@ class AppSkara():
 
   def _background_task_executor(self):
     while self.alive:
-      if self.background_task_queue.empty():
-        time.sleep(0.1)
+      try:
+        msg = self.background_task_queue.get(timeout=1)
+      except queue.Empty:
         continue
-      msg = self.background_task_queue.get()
       role, task, argument = msg.split(maxsplit=2)
       if task == 'spotlight':
         if argument == "enable" and not self.spotlight_enabled[role]:
@@ -433,6 +433,9 @@ class AppSkara():
         #Obtain a drone with correct capabilities
         drone_received = False
         while not drone_received:
+          # Dont get stuck during init if Skaramote is closed
+          if self._is_link_lost():
+            return
           answer = self.crm.get_drone(capabilities=msg['capabilities'])
           if not dss.auxiliaries.zmq.is_ack(answer):
             _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
