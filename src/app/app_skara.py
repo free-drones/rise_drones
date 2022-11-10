@@ -102,6 +102,7 @@ class AppSkara():
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
     self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
+    self.cyclist_point = Point(self.road_heading, self.road_length)
      # Create roles involved depending on number of drones that should be used
     if n_drones == 1:
       self.roles = ["Above"]
@@ -177,7 +178,11 @@ class AppSkara():
     self._dss_info_thread_active = False
     self._dss_data_thread_active = False
     self._info_socket.close()
-
+    #Join threads
+    self._above_drone_lla_thread.join(timeout=1.0)
+    self._background_task_thread.join(timeout=1.0)
+    self.her_lla_thread.join(timeout=1.0)
+    self._app_reply_thread.join(timeout=1.0)
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
@@ -185,8 +190,9 @@ class AppSkara():
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
-    # Disconnect drone if drone is alive
-    for drone in self.drones.values():
+    # join threads and disconnect drone if drone is alive
+    for role, drone in self.drones.items():
+      self.lla_threads[role].join(timeout=1.0)
       if drone.alive:
         #wait until other DSS threads finished
         time.sleep(0.5)
@@ -266,7 +272,7 @@ class AppSkara():
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
-        if self._is_link_lost():
+        if self._is_link_lost() and not self._task_event.is_set():
           self.alive = False
 
     self._app_socket.close()
@@ -330,7 +336,6 @@ class AppSkara():
 
   def _her_lla_publisher(self, role):
     _logger.debug(f'Running LLA publisher for role: {role}')
-    cyclist_point = Point(self.road_heading, self.background_task_queue)
     topic = 'LLA'
     while self.alive:
       if self._her_lla_data is not None and self._her_last_msg_received != self.lla_publishers_timing[role]:
@@ -338,7 +343,7 @@ class AppSkara():
         her_lla = self._get_her_lla()
         if role == "Ahead":
           direction = 1
-          if cyclist_point.state == "Returning":
+          if self.cyclist_point.state == "Returning":
             direction = -1
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, direction, self.ahead_distance)
         else:
@@ -346,9 +351,9 @@ class AppSkara():
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
           # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
-          cyclist_point.new_measurement(time.time(), dist_home)
-          if cyclist_point.switched_direction(dist_home):
-            if cyclist_point.state == "Returning":
+          self.cyclist_point.new_measurement(time.time(), dist_home)
+          if self.cyclist_point.switched_direction(dist_home):
+            if self.cyclist_point.state == "Returning":
               self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
             else:
               self.background_task_queue.put(f'all pattern {self.road_heading}')
@@ -485,8 +490,8 @@ class Point():
   def __init__(self, road_heading, road_length):
     # Create CRM object
     self.prev_time = time.time()
-    self.prev_distance = 0
-    self.filt_speed_home = 0
+    self.prev_distance = 0.0
+    self.filt_speed_home = 0.0
     self.state = "Leaving"
     self.trigger_speed = 1.2
     self.road_heading = road_heading
@@ -494,27 +499,28 @@ class Point():
 
   def new_measurement(self, t, dist_home):
     # Calc delta distance and delta time
-    delta_d = self.prev_distance - dist_home
+    delta_d = dist_home - self.prev_distance
     delta_t = t - self.prev_time
     # Store data for next calculation
     self.prev_distance = dist_home
     self.prev_time = t
     # Calc raw speed
-    speed_home = delta_d/delta_t
+    speed_home = -delta_d/delta_t
     # Update filtered speed
     k = 2
     self.filt_speed_home = (k*self.filt_speed_home + speed_home)/(k+1)
-    _logger.info(f'filtered speed {self.filt_speed_home}')
+    _logger.info(f'filtered speed {self.filt_speed_home}, distance home: {dist_home}')
 
   def switched_direction(self, dist_home):
     #Have we reached the end of the road? Switch state before cyclist is actually returning
     switched = False
     if self.state == 'Leaving' and self.road_length-dist_home < 3.0:
       self.state = "Returning"
+      self.filt_speed_home = 0.0
       switched = True
       _logger.info('End of road reached, cyclist is now Returning')
     elif self.filt_speed_home < -self.trigger_speed:
-      if self.state == "Returning":
+      if self.state == "Returning" and self.road_length-dist_home > 3.0:
         # Cyclist has switched
         self.state = "Leaving"
         switched = True
