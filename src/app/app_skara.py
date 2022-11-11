@@ -99,8 +99,21 @@ class AppSkara():
     self.spotlight_enabled = {}
     self.lla_publishers_timing = {}
     self.road = road
+
+
+
+
+
+    # TODO init to True or false? Init to false will fail getting drones.
     # Flag
-    self._follow_her_enabled = False
+    self._follow_her_enabled = True
+
+
+
+
+
+
+
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
     self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
