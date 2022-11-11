@@ -287,7 +287,7 @@ class Hexacopter:
     self._expected_flight_mode = True
     self._rtl_waypoints = list()
     self.default_speed = 5
-    self.flying_state = 'on_ground'
+    self.flying_state = 'ground'
 
     self._thread_flight_mode = threading.Thread(target=self._main_flight_mode, daemon=True)
     self._thread_flight_mode.start()
@@ -330,7 +330,7 @@ class Hexacopter:
   @flying_state.setter
   def flying_state(self, value):
     '''Get the flying state'''
-    valid_states = ['on_ground','flying','landed']
+    valid_states = ['ground','flying','landed']
     if not value in valid_states:
       raise ValueError(f'{value} is not a valid flying state({valid_states})')
     self._flying_state = value
@@ -602,12 +602,12 @@ class Hexacopter:
 
       time.sleep(0.5)
 
-  # Monitor flying state implements state machine: on_ground -> flying <-> landed
+  # Monitor flying state implements state machine: ground -> flying <-> landed
   def _main_flying_state(self):
-    self.flying_state = 'on_ground'
+    self.flying_state = 'ground'
     self.logger.info(f'Flying state: {self.flying_state}')
     while True:
-      # Vehicle 'on_ground' or 'landed', wait for arming and lift off
+      # Vehicle 'ground' or 'landed', wait for arming and lift off
       while not self.vehicle.armed:
         time.sleep(0.51)
       # Vehicle armed

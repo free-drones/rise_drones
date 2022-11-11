@@ -131,6 +131,7 @@ class Server:
                       'get_currentWP':      {'request': self._request_get_currentWP,      'task': None}, # Not implemented
                       'get_flightmode':     {'request': self._request_get_flightmode,     'task': None},
                       'get_idle':           {'request': self._request_get_idle,           'task': None},
+                      'get_state':          {'request': self._request_get_state,          'task': None},
                       'get_info':           {'request': self._request_get_info,           'task': None},
                       'get_metadata':       {'request': self._request_get_metadata,       'task': None}, # Not implemented
                       'get_owner':          {'request': self._request_get_owner,          'task': None},
@@ -305,6 +306,13 @@ class Server:
     # No nack reasons, accept
     answer = dss.auxiliaries.zmq.ack(fcn, {'idle': not self._task_event.is_set()})
     return answer
+
+  def _request_get_state(self, msg) -> dict:
+    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    # No nack reasons, accept
+    answer = dss.auxiliaries.zmq.nack(fcn, 'Not yet implemented')
+    return answer
+#    {'lat': ms.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state})
 
   def _request_get_info(self, msg) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
@@ -927,7 +935,7 @@ class Server:
         vel_n = vel[0]
         vel_e = vel[1]
         vel_d = vel[2]
-        msg_STATE = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state}
+        msg_STATE = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state}
         self._pub_socket.publish('STATE', msg_STATE)
 
     # NED
