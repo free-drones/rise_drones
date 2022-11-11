@@ -275,6 +275,19 @@ class Client:
   def is_flight_mode(self, mode) -> bool:
     return self._dss.get_flightmode() == mode
 
+  # Get state message
+  def get_state(self) -> dict:
+    return self._dss.get_state()
+
+  # Get flying state
+  def get_flying_state(self) -> str:
+    answer = self._dss.get_state()
+    return answer["flying_state"]
+
+  def set_alt(self, alt, ref) -> None:
+    self._dss.set_alt(alt, ref)
+    return None
+
   # Check who controls
   def is_who_controls(self, who) -> bool:
     return self._dss.who_controls() == who

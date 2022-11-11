@@ -532,7 +532,7 @@ class AppSkara():
       # Check if drone is flying TODO Implement this new API
       if drone.get_flying_state() == 'flying':
         #Go to takeoff height TODO Implement this new API
-        drone.set_alt(alt=self.takeoff_height)
+        drone.set_alt(alt=self.takeoff_height, ref="init")
       else:
         # Takeoff and reset DSS SRTL
         drone.try_set_init_point()
