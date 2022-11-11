@@ -138,7 +138,7 @@ class DSS:
     # return
     return answer['idle']
 
-  def get_state() -> dict:
+  def get_state(self) -> dict:
     call = 'get_state'
     # build message
     msg = {'fcn': call, 'id': self._app_id}
