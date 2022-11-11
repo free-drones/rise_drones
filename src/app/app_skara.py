@@ -99,6 +99,8 @@ class AppSkara():
     self.spotlight_enabled = {}
     self.lla_publishers_timing = {}
     self.road = road
+    # Flag
+    self._follow_her_enabled = False
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
     self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
@@ -409,6 +411,7 @@ class AppSkara():
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
+    self._follow_her_enabled = msg['enable']
     return answer
 
   def _request_heart_beat(self, msg):
@@ -416,7 +419,7 @@ class AppSkara():
     return answer
 
   # Task follow her
-  def _follow_her(self, msg):
+  def _follow_her_old(self, msg):
     if not msg['enable']:
       self._her_lla_subscriber = None
       for drone in self.drones.values():
@@ -436,7 +439,6 @@ class AppSkara():
           # Dont get stuck during init if Skaramote is closed
           if self._is_link_lost():
             _logger.warning('Link is lost during acquisition of drones')
-            self._task_event.set()
             return
           answer = self.crm.get_drone(capabilities=msg['capabilities'])
           if not dss.auxiliaries.zmq.is_ack(answer):
@@ -462,6 +464,84 @@ class AppSkara():
         #Enable follow stream with pattern above
         drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
         drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
+
+  # Task follow her
+  def _follow_her(self, msg):
+    if not msg['enable']:
+      self.disable_followstream()
+    else:
+      #Setup LLA listener to her
+      self.setup_her_lla_subscriber()
+      # Allocate the drones needed for the job
+      self.allocate_drones(msg['capabilities'])
+      # Setup drones and enable follow stream
+      self.setup_drones_and_enable_follow_stream()
+      #what happens if stream enable false during await controls?
+
+  def disable_followstream(self):
+        self._her_lla_subscriber = None
+        for drone in self.drones.values():
+          try:
+            drone.disable_follow_stream()
+            drone.dss_srtl()
+          except dss.auxiliaries.exception.Nack:
+            _logger.warning("Not able to disable properly..")
+
+  def allocate_drones(self, capabilities):
+    # Acquire the drones.items drones.
+    for role, drone in self.drones.items():
+          #Obtain a drone with correct capabilities
+          drone_received = False
+          while not drone_received:
+            # Dont get stuck during init if Skaramote is closed
+            if self._is_link_lost():
+              _logger.warning('Link is lost during acquisition of drones')
+              raise dss.auxiliaries.exception.AbortTask
+            elif not self._follow_her_enabled:
+              _logger.info('Disble follow her during drone acquisition')
+              self.release_drones()
+              raise dss.auxiliaries.exception.AbortTask
+            answer = self.crm.get_drone(capabilities=capabilities)
+            if not dss.auxiliaries.zmq.is_ack(answer):
+              _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
+              time.sleep(2.0)
+            else:
+              drone_received = True
+          _logger.info(f"Received drone for role: {role}")
+          drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
+          if role == "Above":
+            info_port = drone.get_port('info_pub_port')
+            drone.enable_data_stream('LLA')
+            self._above_drone_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, answer['ip'], info_port, "info above")
+
+
+  def release_drones(self):
+    #Disconnect the drones
+    for drone in self.drones.values():
+      try:
+        drone.dss_disconnect()
+      except:
+        _logger.warning("Not able to disconnect properly. Perhaps drone not aquired?")
+
+  def setup_drones_and_enable_follow_stream(self):
+    for role, drone in self.drones.items():
+      #Await controls
+      _logger.debug('WAITING FOR CONTROLS')
+      # TODO Add timeout for await controls?
+      drone.await_controls()
+      # Check if drone is flying TODO Implement this new API
+      if drone.get_flying_state() == 'flying':
+        #Go to takeoff height TODO Implement this new API
+        drone.set_alt(alt=self.takeoff_height)
+      else:
+        # Takeoff and reset DSS SRTL
+        drone.try_set_init_point()
+        drone.set_geofence(height_low=self.geofence_height_min, height_high=self.geofence_height_max, radius=self.geofence_radius)
+        drone.arm_and_takeoff(height=self.takeoff_height)
+        drone.reset_dss_srtl()
+      #Enable follow stream with pattern above
+      drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
+      drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
 
 #--------------------------------------------------------------------#

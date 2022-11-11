@@ -194,7 +194,6 @@ class Client:
   def dss_disconnect(self) -> None:
     '''Disconnect to the DSS'''
     self._dss.disconnect()
-    self.close_dss_socket()
 
   def close_dss_socket(self) -> None:
     '''Close the socket to the DSS'''
