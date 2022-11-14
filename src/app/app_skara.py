@@ -479,7 +479,7 @@ class AppSkara():
       while not drone.is_who_controls('APPLICATION'):
         self.check_if_cancelled('await controls')
         time.sleep(0.5)
-      if drone.get_flying_state() == 'flying':
+      if drone.get_flight_state() == 'flying':
         drone.set_alt(alt=self.takeoff_height, ref="init")
       else:
         # Takeoff and reset DSS SRTL

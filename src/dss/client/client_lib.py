@@ -280,9 +280,9 @@ class Client:
     return self._dss.get_state()
 
   # Get flying state
-  def get_flying_state(self) -> str:
+  def get_flight_state(self) -> str:
     answer = self._dss.get_state()
-    return answer["flying_state"]
+    return answer["flight_state"]
 
   def set_alt(self, alt, ref) -> None:
     self._dss.set_alt(alt, ref)
