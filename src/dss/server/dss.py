@@ -314,7 +314,7 @@ class Server:
     pos = self._hexa.get_position_lla()
     heading_deg = self._hexa.get_heading(unit="deg")
     (vel_n, vel_e, vel_d) = self._hexa.get_velocity(ref="NED")
-    mess = {'lat': pos.lat, 'lon': pos.lon, 'alt': pos.alt, 'heading': heading_deg, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state}
+    mess = {'lat': pos.lat, 'lon': pos.lon, 'alt': pos.alt, 'heading': heading_deg, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flight_state': self._hexa.flight_state}
     answer = dss.auxiliaries.zmq.ack(fcn, mess)
     return answer
 
@@ -367,7 +367,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
     elif self._hexa.get_nsat() < 8:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Less than 8 satellites')
-    elif self._hexa.flying_state == 'flying':
+    elif self._hexa.flight_state == 'flying':
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is flying')
     elif not 2 <= to_alt <= 40:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Height is out of limits')
@@ -386,7 +386,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
-    elif not self._hexa.flying_state == 'flying':
+    elif not self._hexa.flight_state == 'flying':
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is not flying')
     # Accept
     else:
@@ -401,7 +401,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
-    elif not self._hexa.flying_state == 'flying':
+    elif not self._hexa.flight_state == 'flying':
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is not flying')
     elif False: # Think this nack reason is related to DJI-DSS.
       answer = dss.auxiliaries.zmq.nack(fcn, 'RTL failed to engage, try again')
@@ -420,7 +420,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
-    elif not self._hexa.flying_state == 'flying':
+    elif not self._hexa.flight_state == 'flying':
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is not flying')
     elif not 0 <= hover_time <= 300:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Hover_time is out of limits')
@@ -443,7 +443,7 @@ class Server:
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
       answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
-    elif not self._hexa.flying_state == 'flying':
+    elif not self._hexa.flight_state == 'flying':
       answer = dss.auxiliaries.zmq.nack(fcn, 'State is not flying')
     elif self._task_event.is_set() and self._task_priority == MAX_PRIORITY:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Task not prioritized')
@@ -939,7 +939,7 @@ class Server:
         vel_n = vel[0]
         vel_e = vel[1]
         vel_d = vel[2]
-        msg_STATE = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state}
+        msg_STATE = {'lat': msg.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flight_state': self._hexa.flight_state}
         self._pub_socket.publish('STATE', msg_STATE)
 
     # NED
@@ -1063,7 +1063,7 @@ class Server:
     t_sleep = 1
     t_landed_threshold = 15/t_sleep # Unit seconds
     while t_landed < t_landed_threshold :
-        if self._hexa.flying_state == 'landed':
+        if self._hexa.flight_state == 'landed':
           t_landed += t_sleep
         else:
           t_landed = 0
