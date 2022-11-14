@@ -312,8 +312,8 @@ class Server:
     # No nack reasons, accept
     # Build up answer
     pos = self._hexa.get_position_lla()
-    heading_deg = self._hexa.get_heading_deg()
-    (vel_n, vel_e, vel_d) = self._hexa.get_velocity()
+    heading_deg = self._hexa.get_heading(unit="deg")
+    (vel_n, vel_e, vel_d) = self._hexa.get_velocity(ref="NED")
     mess = {'lat': pos.lat, 'lon': pos.lon, 'alt': pos.alt, 'heading': heading_deg, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state}
     answer = dss.auxiliaries.zmq.ack(fcn, mess)
     return answer
