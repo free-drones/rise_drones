@@ -812,6 +812,27 @@ class Hexacopter:
   def get_position_lla_global(self):
     return self.vehicle.location.global_frame
 
+  # Return vehicle heading in unit ("deg" or "rad")
+  def get_heading(self, unit):
+    if unit == "deg":
+      return self.vehicle.attitude.yaw/math.pi*180
+    elif unit == "rad":
+      return self.vehicle.attitude.yaw
+    else:
+      return None
+
+  def get_velocity(self, ref):
+    # Vel is in NED.
+    vel = self.vehicle.velocity
+    # Respond in
+    if ref == "NED":
+      vel_n = vel[0]
+      vel_e = vel[1]
+      vel_d = vel[2]
+      return (vel_n, vel_e, vel_d)
+    else:
+      return (None, None, None)
+
   # Print current pos NED
   def print_pos_ned(self):
     pos = self.vehicle.location.local_frame

@@ -310,9 +310,13 @@ class Server:
   def _request_get_state(self, msg) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.nack(fcn, 'Not yet implemented')
+    # Build up answer
+    pos = self._hexa.get_position_lla()
+    heading_deg = self._hexa.get_heading_deg()
+    (vel_n, vel_e, vel_d) = self._hexa.get_velocity()
+    mess = {'lat': pos.lat, 'lon': pos.lon, 'alt': pos.alt, 'heading': heading_deg, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state}
+    answer = dss.auxiliaries.zmq.ack(fcn, mess)
     return answer
-#    {'lat': ms.lat, 'lon': msg.lon, 'alt': msg.alt, 'heading': vehicle.heading, 'agl': -1, 'vel_n': vel_n, 'vel_e': vel_e, 'vel_d': vel_d, 'gnss_state': self._hexa.gnss_state, 'flying_state': self._hexa.flying_state})
 
   def _request_get_info(self, msg) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
