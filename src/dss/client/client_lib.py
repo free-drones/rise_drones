@@ -395,6 +395,9 @@ class Client:
         self.raise_if_aborted()
       time.sleep(0.5)
 
+  def get_idle(self):
+    return self._dss.get_idle()
+
   # Track waypoints
   def track_waypoints(self, first_wp=0, raise_if_aborted = True):
     '''

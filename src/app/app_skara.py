@@ -391,7 +391,10 @@ class AppSkara():
       descr = 'Requester ({}) is not the APP owner'.format(msg['id'])
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     elif not 'target_id' in msg:
-      descr = 'missing target_id'
+      descr = 'missing target id'
+      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+    elif msg['enable'] and self._follow_her_enabled:
+      descr = 'follow her already enabled'
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
     # Accept if target id in list from CRM
     else:
@@ -402,7 +405,7 @@ class AppSkara():
         self._follow_her_enabled = msg['enable']
         answer = dss.auxiliaries.zmq.ack(fcn)
       else:
-        descr = 'target_id not found'
+        descr = 'target id not found'
         answer = dss.auxiliaries.zmq.nack(fcn, descr)
     return answer
 
@@ -418,53 +421,6 @@ class AppSkara():
   def _request_heart_beat(self, msg):
     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
     return answer
-
-  # Task follow her
-  def _follow_her_old(self, msg):
-    if not msg['enable']:
-      self._her_lla_subscriber = None
-      for drone in self.drones.values():
-        try:
-          drone.disable_follow_stream()
-          drone.dss_srtl()
-        except dss.auxiliaries.exception.Nack:
-          _logger.warning("Not able to disable properly..")
-      self.alive = False
-    else:
-      #Setup LLA listener to her
-      self.setup_her_lla_subscriber()
-      for role, drone in self.drones.items():
-        #Obtain a drone with correct capabilities
-        drone_received = False
-        while not drone_received:
-          # Dont get stuck during init if Skaramote is closed
-          if self._is_link_lost():
-            _logger.warning('Link is lost during acquisition of drones')
-            return
-          answer = self.crm.get_drone(capabilities=msg['capabilities'])
-          if not dss.auxiliaries.zmq.is_ack(answer):
-            _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
-            time.sleep(2.0)
-          else:
-            drone_received = True
-        _logger.info(f"Received drone for role: {role}")
-        drone.connect(answer['ip'], answer['port'], app_id=self.app_id)
-        if role == "Above":
-          info_port = drone.get_port('info_pub_port')
-          drone.enable_data_stream('LLA')
-          self._above_drone_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, answer['ip'], info_port, "info above")
-
-        #Await controls
-        _logger.debug('WAITING FOR CONTROLS')
-        drone.await_controls()
-        # Takeoff and reset DSS SRTL
-        drone.try_set_init_point()
-        drone.set_geofence(height_low=self.geofence_height_min, height_high=self.geofence_height_max, radius=self.geofence_radius)
-        drone.arm_and_takeoff(height=self.takeoff_height)
-        drone.reset_dss_srtl()
-        #Enable follow stream with pattern above
-        drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
-        drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
 
   # Task follow her
   def _follow_her(self, msg):
@@ -508,7 +464,6 @@ class AppSkara():
             drone.enable_data_stream('LLA')
             self._above_drone_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, answer['ip'], info_port, "info above")
 
-
   def release_drones(self):
     #Disconnect the drones
     for drone in self.drones.values():
@@ -535,6 +490,8 @@ class AppSkara():
       #Enable follow stream with pattern above
       drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
       drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
+      monitor_thread = threading.Thread(target=self._monitor_follow_stream, args=(role,), daemon=True)
+      monitor_thread.start()
 
   def check_if_cancelled(self, status_str):
     # Check if task is cancelled, i.e. if link is lost or if follow_her is disabled during initialization
@@ -546,6 +503,14 @@ class AppSkara():
       _logger.info(f'Disable follow her received during {status_str}')
       self.release_drones()
       raise dss.auxiliaries.exception.AbortTask
+
+  def _monitor_follow_stream(self, role):
+    while self.alive and self._follow_her_enabled:
+      #Check if drone is idle and application is in controls
+      if self.drones[role].get_idle() and self.drones[role].is_who_controls('APPLICATION'):
+        # Enable follow stream again after controls has been handled back to the drone
+        self.drones[role].enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
+      time.sleep(1.0)
 
 
 #--------------------------------------------------------------------#
