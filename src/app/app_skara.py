@@ -100,19 +100,7 @@ class AppSkara():
     self.lla_publishers_timing = {}
     self.road = road
 
-
-
-
-
-    # TODO init to True or false? Init to false will fail getting drones.
-    # Flag
-    self._follow_her_enabled = True
-
-
-
-
-
-
+    self._follow_her_enabled = False
 
     #Compute the heading reference for the cyclist in "Leaving" state
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
@@ -411,6 +399,7 @@ class AppSkara():
       if msg['target_id'] in answer['clients']:
         self.her_id = msg['target_id']
         self.her = answer['clients'][self.her_id]
+        self._follow_her_enabled = msg['enable']
         answer = dss.auxiliaries.zmq.ack(fcn)
       else:
         descr = 'target_id not found'
@@ -424,7 +413,6 @@ class AppSkara():
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
-    self._follow_her_enabled = msg['enable']
     return answer
 
   def _request_heart_beat(self, msg):
@@ -506,14 +494,7 @@ class AppSkara():
           #Obtain a drone with correct capabilities
           drone_received = False
           while not drone_received:
-            # Dont get stuck during init if Skaramote is closed
-            if self._is_link_lost():
-              _logger.warning('Link is lost during acquisition of drones')
-              raise dss.auxiliaries.exception.AbortTask
-            elif not self._follow_her_enabled:
-              _logger.info('Disble follow her during drone acquisition')
-              self.release_drones()
-              raise dss.auxiliaries.exception.AbortTask
+            self.check_if_cancelled('drone allocation')
             answer = self.crm.get_drone(capabilities=capabilities)
             if not dss.auxiliaries.zmq.is_ack(answer):
               _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
@@ -534,17 +515,16 @@ class AppSkara():
       try:
         drone.dss_disconnect()
       except:
-        _logger.warning("Not able to disconnect properly. Perhaps drone not aquired?")
+        _logger.warning("Not able to disconnect properly. Perhaps drone not allocated?")
 
   def setup_drones_and_enable_follow_stream(self):
     for role, drone in self.drones.items():
       #Await controls
       _logger.debug('WAITING FOR CONTROLS')
-      # TODO Add timeout for await controls?
-      drone.await_controls()
-      # Check if drone is flying TODO Implement this new API
+      while not drone.is_who_controls('APPLICATION'):
+        self.check_if_cancelled('await controls')
+        time.sleep(0.5)
       if drone.get_flying_state() == 'flying':
-        #Go to takeoff height TODO Implement this new API
         drone.set_alt(alt=self.takeoff_height, ref="init")
       else:
         # Takeoff and reset DSS SRTL
@@ -555,6 +535,17 @@ class AppSkara():
       #Enable follow stream with pattern above
       drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
       drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
+
+  def check_if_cancelled(self, status_str):
+    # Check if task is cancelled, i.e. if link is lost or if follow_her is disabled during initialization
+    if self._is_link_lost():
+      _logger.warning(f'Link is lost during {status_str}')
+      self.release_drones()
+      raise dss.auxiliaries.exception.AbortTask
+    elif not self._follow_her_enabled:
+      _logger.info(f'Disable follow her received during {status_str}')
+      self.release_drones()
+      raise dss.auxiliaries.exception.AbortTask
 
 
 #--------------------------------------------------------------------#
