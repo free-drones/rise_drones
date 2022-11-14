@@ -1,7 +1,7 @@
 .. _skarappapi:
 
 SkarApp API
-==========
+===========
 
 .. index:: SkarApp
 
@@ -29,17 +29,16 @@ REQ/REP interface.
 .. _followher_skara:
 
 Fcn: follow_her
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
-The function "follow_her" is called when the user wants to connect drones.
-
-Prior to calling "follow_her" an LLA
-stream should be enabled on her dynamic publish-socket.
-
-The flight pattern used is "above", where relative altitude is specified as a parameter in the config file.
-
-The message contains a key "enable" to enable or disable the following
-and the key "capabilities" which is a list of capabilities that the drones must have in order to fulfil the purpose.
+The function "follow_her" is called to tell app Skara to aquire drones to follow
+the targed specified by ``target_id``. Prior to calling "follow_her" the target
+id LLA-stream must be enabled on her dynamic publish-socket. The flight pattern
+used is "above", where relative altitude is specified as a parameter in the
+config file. The message contains a key ``enable`` to enable or disable
+following drones. Disabling follow her will return and land any allocated
+drones. The key ``capabilities`` is a list of capabilities that the following
+drones must match.
 
 .. code-block:: json
   :caption: Request: **follow_her**
@@ -54,7 +53,10 @@ and the key "capabilities" which is a list of capabilities that the drones must 
   }
 
 **Nack reasons:**
-  - requester is not the assigned SkarApp
+  - Requestor (id) is not the app owner
+  - Missing target id
+  - Target id not found
+  - Follow her already enabled
 
 SkarApp Info API
 ---------------------
