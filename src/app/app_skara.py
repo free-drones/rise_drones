@@ -238,12 +238,16 @@ class AppSkara():
             self.spotlight_enabled[role] = True
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+            #Wait a while before sending again
+            time.sleep(0.5)
         elif argument == 'disable' and self.spotlight_enabled[role]:
           try:
             self.drones[role].disable_spotlight()
             self.spotlight_enabled[role] = False
           except dss.auxiliaries.exception.Nack as error:
             _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+            #Wait a while before sending again
+            time.sleep(0.5)
       elif task == 'pattern':
         if role == 'all':
           roles = self.drones.keys()
