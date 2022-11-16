@@ -436,13 +436,19 @@ class AppSkara():
       #what happens if stream enable false during await controls?
 
   def disable_followstream(self):
-        self._her_lla_subscriber = None
+        #Start by disable follow stream
         for drone in self.drones.values():
           try:
             drone.disable_follow_stream()
+          except dss.auxiliaries.exception.Nack:
+            _logger.warning("Not able to disable follow stream..")
+        self._her_lla_subscriber = None
+        # Land the drones after stream disabled.
+        for drone in self.drones.values():
+          try:
             drone.dss_srtl()
           except dss.auxiliaries.exception.Nack:
-            _logger.warning("Not able to disable properly..")
+            _logger.warning("Not able to perform dss srtl...")
 
   def allocate_drones(self, capabilities):
     # Acquire the drones.items drones.
@@ -490,6 +496,7 @@ class AppSkara():
       #Enable follow stream with pattern above
       drone.set_pattern_above(rel_alt=self.pattern_rel_alt, heading=self.road_heading)
       drone.enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
+      #Background thread to monitor if pilot intervenes
       monitor_thread = threading.Thread(target=self._monitor_follow_stream, args=(role,), daemon=True)
       monitor_thread.start()
 
@@ -506,7 +513,7 @@ class AppSkara():
 
   def _monitor_follow_stream(self, role):
     while self.alive and self._follow_her_enabled:
-      #Check if drone is idle and application is in controls
+      #Check if drone is idle and application is in controls (i.e. pilot took controls and handled it back again)
       if self.drones[role].get_idle() and self.drones[role].is_who_controls('APPLICATION'):
         # Enable follow stream again after controls has been handled back to the drone
         self.drones[role].enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
