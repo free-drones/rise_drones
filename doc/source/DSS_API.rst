@@ -1254,6 +1254,7 @@ seconds DSS will stop an hover.
   - Application is not in controls
   - Not flying
   - Pattern not set
+  - Stream already enabled
 
 .. _fcnsetgimbal:
 
