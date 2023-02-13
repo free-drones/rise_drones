@@ -348,10 +348,10 @@ class CRM:
         if not info['cmd']:
           continue
         info['project'] = 'unknown'
-        for project in config["zeroMQ"]["subnets"]:
-          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][project]["subnet"]}[0-9][0-9].*$')
+        for _project in config["zeroMQ"]["subnets"]:
+          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["subnet"]}[0-9][0-9].*$')
           if regexp.match(info['cmd']):
-            info['project'] = project
+            info['project'] = _project
             break
         info['killable'] = 'crm.py' not in info['cmd'] and project == info['project']
         info['memory_percent'] = str(round(info['memory_percent'], 1))
