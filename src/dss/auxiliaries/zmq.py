@@ -286,6 +286,9 @@ class Req(_Socket):
       else:
         answer = json.loads(json_reply)
         self._event.set()  # indicates successful communication
+        # Should this function also raise the Nack exeption? It is implemented separately in many dss_api calls
+        #if dss.auxiliaries.zmq.is_nack(answer):
+        #  raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), msg['fcn'])
 
     _logger.debug(f'{self._label} recv: %s\n', str(answer)[:256])
     return answer
