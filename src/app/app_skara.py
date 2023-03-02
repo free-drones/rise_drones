@@ -107,10 +107,14 @@ class AppSkara():
     self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
     self.cyclist_point = Point(self.road_heading, self.road_length)
      # Create roles involved depending on number of drones that should be used
+    self.wait_time = {}
     if n_drones == 1:
       self.roles = ["Above"]
+      self.wait_time["Above"] = 6.0
     else:
       self.roles = ["Above", "Ahead"]
+      self.wait_time["Above"] = 6.0
+      self.wait_time["Ahead"] = 1.0
     #Read parameters
     self.ahead_distance = dss.auxiliaries.config.config['app_skara']['ahead_distance']
     self.pattern_rel_alt = dss.auxiliaries.config.config['app_skara']['pattern_rel_alt']
@@ -136,6 +140,7 @@ class AppSkara():
 
     self.her_id = 'none'
     self.her = None
+    self.switched = False
 
     # Data thread locks
     self._above_data_lock = threading.Lock()
@@ -257,6 +262,19 @@ class AppSkara():
             self.drones[name].set_pattern_above(rel_alt=self.pattern_rel_alt, heading=float(argument))
         except dss.auxiliaries.exception.Nack as error:
           _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
+      elif task == 'stream':
+        if role == 'all':
+          roles = reversed(self.drones.keys())
+        else:
+          roles = [role]
+        try:
+          for name in roles:
+            if argument == 'disable':
+              self.drones[name].disable_follow_stream()
+            else:
+              self.drones[name].enable_follow_stream(self._app_ip, self.lla_publishers[name].port)
+        except dss.auxiliaries.exception.Nack as error:
+          _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
     _logger.info('Background task executor, thread exit')
 
 
@@ -360,18 +378,20 @@ class AppSkara():
             direction = -1
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, direction, self.ahead_distance)
         else:
-          #Above drone only project
+          #Above drone should only project to line (distance = 0)
           modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
           # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
           dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
           self.cyclist_point.new_measurement(time.time(), dist_home)
-          if self.cyclist_point.switched_direction(dist_home):
+          switched = self.cyclist_point.switched_direction(dist_home)
+          if switched:
             if self.cyclist_point.state == "Returning":
               self.background_task_queue.put(f'all pattern {(self.road_heading-180) % 360}')
             else:
               self.background_task_queue.put(f'all pattern {self.road_heading}')
-
-        #Use fixed altitude for smoother movements
+            self.background_task_queue.put('all stream disable')
+            time.sleep(self.wait_time[role])
+        #Publish modified LLA message
         alt_diff = 0 if role == "Above" else self.ahead_rel_alt_diff
         modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
         self.lla_publishers[role].publish(topic, modified_msg)
@@ -523,6 +543,7 @@ class AppSkara():
       if self.drones[role].get_idle() and self.drones[role].is_who_controls('APPLICATION'):
         # Enable follow stream again after controls has been handled back to the drone
         try:
+          _logger.debug(f'Enabling stream for {role} again')
           self.drones[role].enable_follow_stream(self._app_ip, self.lla_publishers[role].port)
         except dss.auxiliaries.exception.Nack as error:
           _logger.error(f'Nacked when sending {error.fcn}, received error: {error.msg}')
@@ -598,7 +619,7 @@ class Point():
       switched = True
       _logger.info('End of road reached, cyclist is now Returning')
     # Should we switch to leaving again when approaching home?
-    elif self.state == 'Returning' and dist_home < 40.0:
+    elif self.state == 'Returning' and dist_home < 3.0:
       self.state = "Leaving"
       self.filt_speed_home = 0.0
       switched = True
@@ -613,7 +634,7 @@ class Point():
     elif self.filt_speed_home > self.trigger_speed:
       # Cyclist is returning
       # Switch to returning only when sufficiently far from home
-      if self.state == "Leaving" and dist_home > 40.0:
+      if self.state == "Leaving" and dist_home > 3.0:
         # Cyclist has switched
         self.state = "Returning"
         switched = True
