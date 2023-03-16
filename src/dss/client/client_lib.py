@@ -387,6 +387,13 @@ class Client:
       time.sleep(0.5)
     self._in_controls = True
 
+  # Wait until controls are taken by Pilot
+  def await_not_in_controls(self):
+    while self.is_who_controls('APPLICATION'):
+      self._logger.info('APPLICATION waiting for PILOT to take CONTROLS')
+      time.sleep(0.5)
+    self._in_controls = False
+
   # Wait until the copter is idle
   def await_idling(self, raise_if_aborted = True):
     self._logger.info('Waiting for dss to idle')
