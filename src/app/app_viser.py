@@ -7,8 +7,8 @@ This app:
 - Connects to CRM and receives an app_id
 - Requests a spotlight drone
 - Sets up position logging
-- Enables spotlight control from TODO somewhere
-
+- Enables spotlight blink by toggeling controls
+- Downloads all data when control is toggeled post landing
 '''
 
 import argparse
@@ -18,6 +18,7 @@ import sys
 import threading
 import time
 import traceback
+from datetime import datetime
 
 import zmq
 
@@ -26,7 +27,7 @@ import dss.client
 
 #--------------------------------------------------------------------#
 
-__author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
+__author__ = 'Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '0.2.0'
 __copyright__ = 'Copyright (c) 2022, RISE'
 __status__ = 'development'
@@ -52,7 +53,7 @@ _context = zmq.Context()
 class PhotoMission():
   # Init
   def __init__(self, app_ip, app_id, crm):
-    # Create Client object
+    # Create Client object, set high timeout since connection is poor and we are handeling pictures
     self.drone = dss.client.Client(timeout=10000, exception_handler=None, context=_context)
 
     # Create CRM object
@@ -171,12 +172,12 @@ class PhotoMission():
 
 #--------------------------------------------------------------------#
 # Setup the DSS info stream thread
-  def setup_dss_info_stream(self):
+  def setup_dss_info_stream(self, timestamp):
     #Get info port from DSS
     info_port = self.drone.get_port('info_pub_port')
     if info_port:
       self._dss_info_thread = threading.Thread(
-        target=self._main_info_dss, args=[self.drone._dss.ip, info_port])
+        target=self._main_info_dss, args=[self.drone._dss.ip, info_port, timestamp])
       self._dss_info_thread_active = True
       self._dss_info_thread.start()
 
@@ -193,7 +194,24 @@ class PhotoMission():
 
 #--------------------------------------------------------------------#
 # The main function for subscribing to info messages from the DSS.
-  def _main_info_dss(self, ip, port):
+  def _main_info_dss(self, ip, port, timestamp):
+    # Create a logfile of STATE data and the metadata.
+    # A text file will be built up, missing the trailing curly bracket to be resilient to early exits.
+    # Once logging compleete, the final curly bracket will be added and converted to JSON.
+    # Generate filenames
+    log_items_filename = '{}_{}'.format(timestamp, 'viser-log-items.txt')
+    log_filename = '{}_{}'.format(timestamp, 'viser-log.json')
+    log_items = 'log/' + log_items_filename
+    log_file = 'log/' + log_filename
+
+    # Init log items
+    k = 0
+    with open(log_items, 'w', encoding="utf-8") as outfile:
+      # Manually add the initial key with empty string value
+      first_key_value = f'{{ "{k}": ""'
+      outfile.write(first_key_value)
+
+
     # Enable LLA stream
     # self.drone._dss.data_stream('LLA', True)
     # Enable STATE stream
@@ -206,6 +224,29 @@ class PhotoMission():
         (topic, msg) = info_socket.recv()
         if topic == 'STATE':
           _logger.info(msg)
+          # Save STATE information and leave out final curly bracket
+          k += 1
+          # Save the log_item under a new key in the log file built line by line
+          with open(log_items, 'a', encoding="utf-8") as outfile:
+            # Build up string to print to file
+            # Test both time formats
+            _time = datetime.now()
+            time_stamp ={}
+            time_stamp["hour"] = _time.strftime("%H")
+            time_stamp["minute"] = _time.strftime("%M")
+            time_stamp["second"] = _time.strftime("%S")
+            time_stamp["microsecond"] = _time.strftime("%f")
+            time_stamp["string"] = _time.strftime("%H:%M:%S.%f")
+            # Create a log string: ' , "k": {"time": {time_stamp}, "state": {state}}
+            log_string = f',"{k}":'
+            log_string += f'{{'
+            log_string += f'"time": {json.dumps(time_stamp)}'
+            log_string += f','
+            log_string += f'"state": {json.dumps(msg)}'
+            log_string += f'}}'
+            # write the log_item as a string under the newly added key
+            outfile.write(log_string)
+
         elif topic == 'battery':
           _logger.info('Remaning battery time: '+ msg['remaining_time'] +  ' seconds')
         elif topic == 'currentWP':
@@ -219,6 +260,19 @@ class PhotoMission():
           _logger.info(f'Topic not recognized on info link: {topic}')
       except:
         pass
+
+    # Thread is shutting down
+    # Add the final curly bracket to log items
+    with open(log_items, 'a', encoding="utf-8") as outfile:
+      outfile.write('}')
+
+    # Open the log items file and save it in log file with pretty print
+    with open(log_items, 'r', encoding="utf-8") as infile:
+      big_json = json.load(infile)
+      with open(log_file, 'w', encoding="utf-8") as outfile:
+        log_str = json.dumps(big_json, indent=4)
+        outfile.write(log_str)
+
     info_socket.close()
     _logger.info("Stopped thread and closed info socket")
 
@@ -265,7 +319,8 @@ class PhotoMission():
       return
 
     # Setup info and data stream to DSS
-    self.setup_dss_info_stream()
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    self.setup_dss_info_stream(timestamp)
     self.setup_dss_data_stream()
 
     # Send a command to the connected drone and print the result
@@ -290,6 +345,8 @@ class PhotoMission():
 
     # Wait for controls, Pilot will hand over controls when in position.
     self.drone.await_controls()
+    # Set gimbal down in case pilot took control during take-off
+    self.drone.set_gimbal(roll=0, pitch=-90, yaw=0)
 
     # While we are still flying, take photo and blink spotlight each time controls are handed over
     while self.drone.get_flight_state() != 'landed':
@@ -302,6 +359,7 @@ class PhotoMission():
         time.sleep(1)
         self.drone.disable_spotlight()
         _logger.info('Download latest low res photo to update metadata with filenames')
+        time.sleep(1)
         self.drone.photo_download('latest', 'low')
         _logger.info('Download low res photo')
 
@@ -317,15 +375,19 @@ class PhotoMission():
       self.drone.await_controls()
 
     # Landed and in controls
-    print('Data download will start, be patient..')
+    # Stop STATE stream, it will just flood the log
+    self.drone.disable_data_stream('STATE')
 
-    # We are landed
+    print('Data download will start, be patient..')
     # Download all photos high res and metadata.
     # Save metadata to file
     json_metadata = self.drone.get_metadata(ref='LLA', index='all')
-    with open('metadata_LLA.json', "w") as fh:
+
+    metadata_filename = '{}_{}'.format(timestamp, 'viser-metadata.json')
+    metadata_file = 'log/' + metadata_filename
+    with open(metadata_file, "w") as fh:
       fh.write(json.dumps(json_metadata, indent=4))
-      _logger.info('Metadata saved to metadata_LLA.json')
+      _logger.info('Metadata saved to log/timestamp_viser-metadata.json')
 
     # For convinence print photo metadata to log. Whole json cannot be printed to log, its truncated.
     for item in json_metadata:
