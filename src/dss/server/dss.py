@@ -1234,6 +1234,7 @@ class Server:
           # simple requests are always allowed
           answer = request(msg)
       else:
+        start_task = False
         print("request not supported")
         print(fcn)
         answer = {'fcn': 'nack', 'arg': msg['fcn'], 'arg2': 'request not supported'}
