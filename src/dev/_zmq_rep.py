@@ -6,8 +6,6 @@
 import argparse
 import json
 
-import zmq
-
 import dss.auxiliaries
 from dss.auxiliaries.config import config
 
@@ -19,8 +17,8 @@ def receive_and_reply(socket):
   '''receives a json message and replies with the same message'''
   try:
     msg = socket.recv_json()
-  except zmq.error.Again as error:
-    _print('recv: ' + str(error) + ' (Timeout)')
+  except dss.auxiliaries.exception.Again as error:
+    _print(f'{error.fcn} - from socket connected to {error.ip}:{error.port}')
     return
 
   # answer = msg
@@ -29,8 +27,8 @@ def receive_and_reply(socket):
 
   try:
     socket.send_json(answer)
-  except zmq.error.ZMQError as error:
-    _print('send: ' + str(error))
+  except dss.auxiliaries.exception.ZMQError as error:
+    _print(f'{error.fcn} - from socket connected to {error.ip}:{error.port}')
   else:
     _print('Replying with:\n' + json.dumps(request, indent = 4))
 
@@ -40,7 +38,8 @@ def _main():
   parser.add_argument('--port', default=config["CRM"]["default_crm_port"], help=f'{config["CRM"]["default_crm_port"]}')
   args = parser.parse_args()
 
-  socket = dss.auxiliaries.zmq.Rep(zmq.Context(), port=args.port)
+  context = dss.auxiliaries.zmq.Context()
+  socket = dss.auxiliaries.zmq.Rep(context, port=args.port)
   _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
   _print('Listening for incoming messages on port: ' + str(args.port))
 

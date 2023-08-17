@@ -367,7 +367,10 @@ class Rep(_Socket):
     _logger.debug(f'{self._label} Connected to tcp://{self._ip}:{self._port} with timeout {self._timeout}')
 
   def recv_json(self) -> str:
-    request = self._socket.recv_json()
+    try:
+      request = self._socket.recv_json()
+    except zmq.error.Again as error:
+      raise dss.auxiliaries.exception.Again(error, self.ip, self.port)
     _logger.debug(f'{self._label} recv: %s', str(request)[:256])
     return request
 
@@ -438,7 +441,10 @@ class Sub(_Socket):
     self._socket.setsockopt_string(zmq.UNSUBSCRIBE, topic)
 
   def recv(self) -> typing.Tuple[str, dict]:
-    msg = str(self._socket.recv(), 'utf-8')
+    try:
+      msg = str(self._socket.recv(), 'utf-8')
+    except zmq.error.Again as error:
+      raise dss.auxiliaries.exception.Again(error, self.ip, self.port)
     topic, msg = demogrify(msg)
     _logger.debug(f'{self._label} {topic}: %s', str(msg)[:256])
     return topic, msg

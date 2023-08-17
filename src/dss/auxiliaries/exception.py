@@ -44,3 +44,19 @@ class NoAnswer(Error):
     self.fcn = msg
     self.ip = ip
     self.port = port
+
+class Again(Error):
+  '''Exception raised if a socket timeout occurs'''
+  def __init__(self, msg, ip, port):
+    Error.__init__(self)
+    self.fcn = msg
+    self.ip = ip
+    self.port = port
+
+class ZMQError(Error):
+  '''Exception raised if a socket timeout occurs'''
+  def __init__(self, msg, ip, port):
+    Error.__init__(self)
+    self.fcn = msg
+    self.ip = ip
+    self.port = port

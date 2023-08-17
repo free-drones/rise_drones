@@ -3,7 +3,6 @@
 '''
 
 import argparse
-import zmq
 
 import dss.auxiliaries
 
@@ -19,7 +18,7 @@ def _main():
   parser.add_argument('--port', default=5559, help='port to subscribe to')
   args = parser.parse_args()
 
-  context = zmq.Context()
+  context = dss.auxiliaries.zmq.Context()
   socket = dss.auxiliaries.zmq.Sub(context, ip=args.ip, port=args.port, timeout=30000, subscribe_all=False)
   socket.subscribe('tes')
   _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
@@ -30,8 +29,8 @@ def _main():
     try:
       topic, msg = socket.recv()
       _print((topic, msg))
-    except zmq.error.Again as error:
-      _print(str(error))
+    except dss.auxiliaries.exception.Again as error:
+      _print(f'{error.fcn} - from socket connected to {error.ip}:{error.port}')
     except KeyboardInterrupt:
       socket.close()
       socket = None

@@ -6,8 +6,6 @@
 import argparse
 import json
 
-import zmq
-
 import dss.auxiliaries
 from dss.auxiliaries.config import config
 
@@ -23,7 +21,8 @@ def _main():
   parser.add_argument('--id', default=config["CRM"]["default_id"], help=config["CRM"]["default_id"])
   args = parser.parse_args()
 
-  socket = dss.auxiliaries.zmq.Req(zmq.Context(), args.ip, args.port)
+  context = dss.auxiliaries.zmq.Context()
+  socket = dss.auxiliaries.zmq.Req(context, args.ip, args.port)
   _print('Local IP: ' + dss.auxiliaries.zmq.get_ip_address())
 
   msg = {'id':args.id, 'fcn': 'clients'}
