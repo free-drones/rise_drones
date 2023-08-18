@@ -157,7 +157,7 @@ class Client:
       # Give up if no success after maximum number of attempts, raise exception
       if attempt == max_attempt-1:
         self._logger.error('Failed to connect to DSS on %s', sen_address)
-        raise dss.auxiliaries.exception.Error('Failed to connect to DSS on %s' % sen_address)
+        raise dss.auxiliaries.exception.Error(f'Failed to connect to DSS on {sen_address}')
       time.sleep(0.1)
 
     # SEN class will update sen_id to connected sen when get_info runs.
