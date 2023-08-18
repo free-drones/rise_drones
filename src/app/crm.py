@@ -7,7 +7,6 @@ import logging
 import subprocess
 import traceback
 import psutil
-import zmq
 import re
 import os
 
@@ -156,7 +155,7 @@ class CRM:
 
       try:
         msg = self._socket.recv_json()
-      except zmq.error.Again as error:
+      except dss.auxiliaries.exception.Again as error:
         self.delStaleClients()
         continue # timeout: no message received; try again
 

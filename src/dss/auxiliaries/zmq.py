@@ -336,7 +336,12 @@ class Req(_Socket):
         heartbeat_msg = self._heartbeat_msg
         heartbeat_msg['tick'] = tick
         tick += 1
-        answer = self.send_and_receive(heartbeat_msg)
+        try:
+          answer = self.send_and_receive(heartbeat_msg)
+        except dss.auxiliaries.exception.NoAnswer:
+          # There was no answer, create a virtual nack to not repeat code
+          answer = {'fcn': 'nack'}
+
         if not dss.auxiliaries.zmq.is_ack(answer):
           attempts += 1
           if attempts < 3:

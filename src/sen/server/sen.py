@@ -6,8 +6,6 @@ import sys
 import threading
 import time
 import traceback
-import typing
-import zmq
 
 import dss.auxiliaries
 import dss.client
@@ -476,7 +474,7 @@ class Server:
         msg = json.loads(msg)
         if self.from_owner(msg):
           self._t_last_owner_msg = time.time()
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         _ = self._is_link_lost()
         continue
 

@@ -3,7 +3,6 @@
 import threading
 import random
 import time
-import json
 import logging
 import dss.auxiliaries
 class PiCam():
@@ -13,6 +12,7 @@ class PiCam():
     self.logger = logging.getLogger(__name__)
 
     self._name = 'Raspbery pi cam'
+    self._status_msg = ''
     self.publish = publish_method
     self._publish_cv_BB = False
     self._publish_cv_OD = False
@@ -132,7 +132,7 @@ class PiCam():
         self.raise_if_aborted()
 
   def _main_thread(self):
-    print(f'Main thread in picam.py does not do anything now. It just prevents the code from exiting')
+    print('Main thread in picam.py does not do anything now. It just prevents the code from exiting')
 
     while self._main_thread_active:
       time.sleep(0.5)
