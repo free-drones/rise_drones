@@ -34,6 +34,7 @@ class CRM:
                       'clients':             self._request_clients,
                       'delStaleClients':     self._request_delStaleClients,
                       'get_drone':           self._request_get_drone,
+                      'get_sensor':          self._request_get_sensor,
                       'get_processes':       self._request_get_processes,
                       'get_info':            self._request_get_info,
                       'get_performance':     self._request_get_performance,
@@ -45,11 +46,12 @@ class CRM:
                       'launch_sitl':         self._request_launch_sitl,
                       'register':            self._request_register,
                       'release_drone':       self._request_release_drone,
+                      'release_sensor':      self._request_release_sensor,
                       'restart':             self._request_restart,
                       'unregister':          self._request_unregister,
                       'upgrade':             self._request_upgrade}
 
-    self._types = ('dss', 'da', 'dsa')
+    self._types = ('dss', 'da', 'dsa','sen')
 
     self._alive = True
     self._clients = {}
@@ -270,6 +272,7 @@ class CRM:
     clientsToDelete = self.delStaleClients()
     return dss.auxiliaries.zmq.ack(fcn, {'deleted': clientsToDelete})
 
+  # Request the ownershop of a drone agent
   def _request_get_drone(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
 
@@ -310,6 +313,51 @@ class CRM:
         return dss.auxiliaries.zmq.ack(fcn, {'id': dss_id, 'ip': self._clients[dss_id]['ip'], 'port': self._clients[dss_id]['port']})
 
     return dss.auxiliaries.zmq.nack(fcn, 'no available drone with requested capabilities')
+
+  # Request the ownership of a sensor agent
+  def _request_get_sensor(self, msg: dict) -> dict:
+    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+
+    # Check arguments
+    if not all(key in msg for key in ['id']):
+      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+    if not any(key in msg for key in ['force', 'capabilities']):
+      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: either force or capabilities must be used')
+
+    # Check that requester is registered
+    requester_id = msg['id']
+    if requester_id not in self._clients:
+      return dss.auxiliaries.zmq.nack(fcn, 'unknown requestor id')
+
+    # Client wants a specific sensor
+    if 'force' in msg:
+      force = msg['force']
+      if force not in self._clients:
+        return dss.auxiliaries.zmq.nack(fcn, 'unknown forced id')
+      if self._clients[force]['owner'] != 'crm':
+        return dss.auxiliaries.zmq.nack(fcn, 'forced id not available')
+      if self._now - self._clients[force]['timestamp'] > 20: #seconds
+        return dss.auxiliaries.zmq.nack(fcn, 'forced id is stale')
+      self._task_queue.add(self.task_set_owner, force, requester_id)
+      return dss.auxiliaries.zmq.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
+    else:
+      #Get capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
+      capabilities = set({capa.casefold(): capa for capa in msg['capabilities']})
+      sensor_found = False
+      n_capabilities = 100
+      for id_, client in self._clients.items():
+        client_capabilities = set({capa.casefold(): capa for capa in client['capabilities']})
+        # Try to find a suitable drone. Pick the one with least amount of total capabilities that satisfies the requirements.
+        if client['owner'] == 'crm' and client['type'] == 'sen' and capabilities.issubset(client_capabilities) and len(client_capabilities) < n_capabilities and (self._now - client['timestamp']) < 20:
+          sensor_found = True
+          n_capabilities = len(client_capabilities)
+          sen_id = id_
+      if sensor_found:
+        self._task_queue.add(self.task_set_owner, sen_id, requester_id)
+        return dss.auxiliaries.zmq.ack(fcn, {'id': sen_id, 'ip': self._clients[sen_id]['ip'], 'port': self._clients[sen_id]['port']})
+
+    return dss.auxiliaries.zmq.nack(fcn, 'no available sensor with requested capabilities')
+
 
   def _request_get_info(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
@@ -571,6 +619,7 @@ class CRM:
 
     return dss.auxiliaries.zmq.ack(fcn, {'id': id_})
 
+  # Client wants to return the ownership of a drone
   def _request_release_drone(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq.get_fcn(msg)
 
@@ -590,6 +639,28 @@ class CRM:
 
     # send rtl for now!
     self._task_queue.add(self.task_rtl, id_released)
+
+    return dss.auxiliaries.zmq.ack(fcn)
+
+  # Client wants to retrn the ownership of a sensor
+  def _request_release_sensor(self, msg: dict) -> dict:
+    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+
+    # check arguments
+    if not all(key in msg for key in ['id', 'id_released']):
+      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, id_released} are mandatory')
+
+    id_ = msg['id']
+    if id_ not in self._clients:
+      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id: {id}')
+
+    id_released = msg['id_released']
+    if id_released not in self._clients:
+      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id (id_released): {id_released}')
+
+    self._task_queue.add(self.task_set_owner, id_released, 'crm')
+
+    # Stop data collection?
 
     return dss.auxiliaries.zmq.ack(fcn)
 

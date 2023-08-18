@@ -2,10 +2,17 @@
 '''This is a command line application that sends simple commands to a
 crm instance.'''
 
+
+
 import argparse
 import json
 
 import zmq
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 import dss.client

@@ -67,6 +67,14 @@ class CRM:
       msg['force'] = force
     return self._socket.send_and_receive(msg)
 
+  def get_sensor(self, capabilities=None, force=None):
+    msg = {'fcn': 'get_sensor', 'id': self._app_id}
+    if capabilities is not None :
+      msg['capabilities'] = capabilities
+    if force is not None :
+      msg['force'] = force
+    return self._socket.send_and_receive(msg)
+
   def get_info(self):
     return self._socket.send_and_receive({'id': self._app_id, 'fcn': 'get_info'})
 

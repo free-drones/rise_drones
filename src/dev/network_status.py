@@ -2,10 +2,13 @@
 
 import json
 import argparse
-#import sys
-#import os
 import time
 import traceback
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 from dss.auxiliaries.modem import Modem
 
@@ -23,42 +26,42 @@ __status__ = 'development'
 
 # Main
 def main(modem):
-    # # Allocate logfile
-    my_log = {}
+  # # Allocate logfile
+  my_log = {}
 
-    # Get static info
-    my_log['static_info'] = modem.get_static_info()
+  # Get static info
+  my_log['static_info'] = modem.get_static_info()
 
-    # Enter thread to collect data
-    k = 1
-    while k < 5:
-        # Get dynamic info
-        log_item = modem.get_cell_info()
+  # Enter thread to collect data
+  k = 1
+  while k < 5:
+    # Get dynamic info
+    log_item = modem.get_cell_info()
 
-        # Add fake pos data
-        log_item['pos'] = {}
-        log_item['pos']['lat'] = 58.6
-        log_item['pos']['long'] = 15.6
-        log_item['pos']['alt'] = 102
+    # Add fake pos data
+    log_item['pos'] = {}
+    log_item['pos']['lat'] = 58.6
+    log_item['pos']['long'] = 15.6
+    log_item['pos']['alt'] = 102
 
-        my_log[str(k)] = {}
-        my_log[str(k)] = log_item
+    my_log[str(k)] = {}
+    my_log[str(k)] = log_item
 
-        time.sleep(1)
-        k+=1
+    time.sleep(1)
+    k+=1
 
-    print(json.dumps(my_log, indent=4))
+  print(json.dumps(my_log, indent=4))
 
-    log_str = json.dumps(my_log, indent=4)
-    print(log_str)
-    with open('network-log.json','w', encoding="utf-8") as outfile:
-        outfile.write(log_str)
+  log_str = json.dumps(my_log, indent=4)
+  print(log_str)
+  with open('network-log.json','w', encoding="utf-8") as outfile:
+    outfile.write(log_str)
 
-    # Test reading from file
-    dummy = modem.dummy_log()
-    print(json.dumps(dummy, indent=4))
+  # Test reading from file
+  dummy = modem.dummy_log()
+  print(json.dumps(dummy, indent=4))
 
-    modem.close()
+  modem.close()
 
 
 #--------------------------------------------------------------------#

@@ -114,6 +114,8 @@ camera.
 
 **Nack reasons:**
   - requester is not the assigned TYRApp
+
+
 .. .. _fcnTYRAphoto:
 
 .. Fcn: photo

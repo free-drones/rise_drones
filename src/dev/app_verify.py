@@ -9,12 +9,16 @@ This app is used to verify functionality on the Ardupilot DSS
 import argparse
 import json
 import logging
-import sys
 import threading
 import time
 import traceback
 import numpy as np
 import zmq
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 import dss.client
@@ -212,7 +216,7 @@ class AppVerify():
 #--------------------------------------------------------------------#
   # Setup the DSS data stream thread
   def setup_dss_data_stream(self):
-    #Get data port from DSS
+    # Get data port from DSS
     answer = self.drone._dss.get_info()
     data_port = answer['data_pub_port']
     if data_port:
@@ -269,6 +273,7 @@ class AppVerify():
     _logger.info("Stopped thread and closed data socket")
 
 #------------------------TASKS----------------------------------------#
+  # Task connect to drone
   def task_connect_to_drone(self):
     drone_received = False
     while self.alive and not drone_received:

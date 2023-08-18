@@ -330,6 +330,7 @@ including CPU, memory and load.
     "fcn": "get_performance",
     "id": "<requestor id>"
   }
+
 The CRM replies with an ack and a string which captures the performance information:
 
 .. code-block:: json
@@ -342,6 +343,7 @@ The CRM replies with an ack and a string which captures the performance informat
     "performance": "000.0% @ 1701.6182499999998MHz x 24 (000%, 000%, 000%) - 005.6% of 20048MB - time 07:40:19"
   }
 .. _fcncrmgetprocesses:
+
 Fcn: get_processes
 ~~~~~~~~~~~~~~~~~~
 

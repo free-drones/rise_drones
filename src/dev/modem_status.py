@@ -1,8 +1,16 @@
 #!/usr/bin/python3
+'''
+Modem status script
+'''
 
 import json
 import argparse
 import traceback
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 from dss.auxiliaries.modem import Modem
 
@@ -20,19 +28,19 @@ __status__ = 'development'
 
 # Main
 def main(modem):
-    # Print mount point
-    tty = {'tty': modem.ser.port}
-    # Get static info
-    static_info = modem.get_static_info()
-    # Get signal quality
-    signal_quality = modem.send_at_and_parse('sig_quality')
-    # Merge into one dict
-    modem_status = {**tty, **static_info, **signal_quality}
+  # Print mount point
+  tty = {'tty': modem.ser.port}
+  # Get static info
+  static_info = modem.get_static_info()
+  # Get signal quality
+  signal_quality = modem.send_at_and_parse('sig_quality')
+  # Merge into one dict
+  modem_status = {**tty, **static_info, **signal_quality}
 
-    # Print to scrren
-    print(json.dumps(modem_status, indent=4))
+  # Print to scrren
+  print(json.dumps(modem_status, indent=4))
 
-    modem.close()
+  modem.close()
 
 
 #--------------------------------------------------------------------#

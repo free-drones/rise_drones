@@ -4,7 +4,11 @@
 
 import time
 import argparse
-import zmq
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 
@@ -19,7 +23,7 @@ def _main():
   parser.add_argument('--port', default=5559, help='port to publish on')
   args = parser.parse_args()
 
-  context = zmq.Context()
+  context = dss.auxiliaries.zmq.Context()
   socket = dss.auxiliaries.zmq.Pub(context, ip='*', port=args.port, timeout=1000)
   _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
   _print('Publishing messages to all ip (*) at port :' + str(args.port))

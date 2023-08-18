@@ -13,3 +13,5 @@ __pycache__/
 
 /doc/build/
 /doc/source/*.inc
+
+pylint.log

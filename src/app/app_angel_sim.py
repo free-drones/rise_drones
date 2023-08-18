@@ -195,7 +195,8 @@ class AppAngelSim():
         elif topic == 'battery':
           _logger.info('Remaining battery time: %s seconds', msg["remaining_time"])
         else:
-          _logger.debug('Topic not recognized on info link: %s', topic)
+          pass
+          #_logger.debug('Topic not recognized on info link: %s', topic)
       except:
         pass
     info_socket.close()

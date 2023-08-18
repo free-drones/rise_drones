@@ -18,6 +18,7 @@ companion_computer/dji       |version-dji|
 
    introduction
    DSS_API
+   SSS_API
    CRM_API
    Application_API
    TYRApp_API

@@ -4,10 +4,14 @@
 import argparse
 import json
 import logging
-import sys
 import threading
 import time
 import traceback
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 import dss.client
@@ -319,6 +323,9 @@ class KeyboardClient(dss.client.Client):
           print("  [b] toggle data stream: LLA")
           print("  [B] toggle data stream: photo_LLA")
           print("  [V] toggle data stream: battery")
+          print("  [.] get sensor with capability RPI")
+          print("  [:] release sensor")
+
 
 
         elif key == 'a':
@@ -601,6 +608,21 @@ class KeyboardClient(dss.client.Client):
           print('APPLICATION waiting for the controls')
           self.await_controls()
           print('APPLICATION has the controls')
+        elif key == '.':
+          print(f'Get a sensor with capability RPI')
+
+        elif key == ':':
+          print(f'Release sensor')
+          answer = self._crm.release_drone(self._drone_name)
+          if not dss.auxiliaries.zmq.is_ack(answer, 'release_sensor'):
+            print(f"Not possible to release sensor, reason: {answer['description']}")
+          else:
+            # Close the SEN socket such that no heartbeat messages are sent.
+            #print(f"The sensor with id {self._sensor_name} has successfully been released")
+            #self._sen._socket.close()
+            #self._sen = None
+            pass
+
         else:
           print("invalid command; press h for help")
       except dss.auxiliaries.exception.Nack as nack:

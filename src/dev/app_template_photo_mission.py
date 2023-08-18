@@ -9,12 +9,17 @@ This app connects to CRM and receives an app_id.
 import argparse
 import json
 import logging
-import sys
+
 import threading
 import time
 import traceback
 
 import zmq
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 import dss.client

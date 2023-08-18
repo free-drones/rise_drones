@@ -11,9 +11,13 @@ TODO: Tell the client to enable logging using their request/reply socket
 
 import argparse
 import logging
-import sys
 
 import zmq
+
+import sys
+import os
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 from dss.auxiliaries.config import config
