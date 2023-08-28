@@ -64,6 +64,7 @@ def configure(filename: str = '', stdout: bool = True, rotating = False, logleve
   numeric_level = getattr(logging, loglevel.upper(), None)
   if not isinstance(numeric_level, int):
     raise dss.auxiliaries.exception.InputError(loglevel, 'invalid log level')
+  ## TODO, setting log level does not work properly. WHy is dss hardcoded?
   logging.getLogger('dss').setLevel(numeric_level)
 
   # always log version and command line arguments

@@ -33,7 +33,9 @@ __status__ = 'development'
 
 #--------------------------------------------------------------------#
 
-_logger = logging.getLogger('sen.template')
+#_logger = logging.getLogger('sen.template')
+_logger = logging.getLogger('dev.app_test_sensor')
+_logger.setLevel(logging.DEBUG)
 _context = dss.auxiliaries.zmq.Context()
 
 #--------------------------------------------------------------------#
@@ -54,8 +56,6 @@ class SensorTest():
   def __init__(self, app_ip, app_id, crm):
     # Create Client object, set high timeout since connection is poor and we are handeling pictures
     self.sen = sen.client.Client(timeout=2000, exception_handler=None, context=_context)
-
-    #self.sen = Client(timeout=10000, exception_handler=None, context=_context)
 
     # Create CRM object
     self.crm = dss.client.CRM(_context, crm, app_name='app_test_sensor.py', desc='Sensor test app', app_id=app_id)
@@ -247,7 +247,7 @@ class SensorTest():
     answer = self.crm.get_sensor(capabilities=['RPI'])
     if dss.auxiliaries.zmq.is_nack(answer):
       print(f'Did not receive a sensor: {dss.auxiliaries.zmq.get_nack_reason(answer)}, shutting down\n')
-      _logger.error(f'Did not receive a sensor: {dss.auxiliaries.zmq.get_nack_reason(answer)}')
+      _logger.info(f'Did not receive a sensor: {dss.auxiliaries.zmq.get_nack_reason(answer)}')
       _logger.info('No available RPI sensor')
       return
 
@@ -284,8 +284,14 @@ class SensorTest():
     self.sen.cv_algorithm('objectDetection', True)
     time.sleep(10)
 
+    _idle = self.sen.get_idle()
+    print(_idle)
+
     # Disable data stream
     self.sen.disable_data_stream('OD')
+    time.sleep(1)
+    _idle = self.sen.get_idle()
+    print(_idle)
 
     # Enable an other data stream
     self.sen.enable_data_stream('BB')

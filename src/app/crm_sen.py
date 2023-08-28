@@ -40,7 +40,7 @@ def _main():
   # Find correct subnet
   sen_ip = args.sen_ip
   subnet = dss.auxiliaries.zmq.get_subnet(ip=sen_ip)
-  dss.auxiliaries.logging.configure(f'{args.sen_id}.log', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
+  dss.auxiliaries.logging.configure(f'crm_sen.log', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   # start sen
   try:

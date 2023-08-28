@@ -7,9 +7,12 @@ import threading
 import time
 import traceback
 
-import dss.auxiliaries
+
+
+import dss.auxiliaries.exception
 import dss.client
 import sen.server
+from dss.auxiliaries.config import config, config_path
 
 
 __author__ = 'Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
@@ -23,6 +26,11 @@ class Server:
   '''Sensor Server'''
 
   def __init__(self, sen_ip, sen_id='', camera='', crm: str='', capabilities=None, description='Sensor_server', die_gracefully: bool=False):
+    # TODO, have to configure log level specifically for this logger, why? The logger seem to have level EROOR, should have DEBUG?
+    self._logger = logging.getLogger(__name__)
+    self._logger.setLevel(logging.DEBUG)
+    self._logger.info(f'Sensor Server version: {dss.__version__}, git describe: {dss.auxiliaries.git.describe()}')
+
     if die_gracefully:
       # source: https://stackoverflow.com/a/31464349
       import signal
@@ -36,10 +44,7 @@ class Server:
 
     self._owner = 'da000'
 
-    self._logger = logging.getLogger(__name__)
     self._zmq_context = dss.auxiliaries.zmq.Context()
-
-    self._logger.info(f'Sensor Server version: {dss.__version__}, git describe: {dss.auxiliaries.git.describe()}')
 
     # This attribute is true if there is a connection to a sensor client
     # application
@@ -60,7 +65,7 @@ class Server:
 
     if camera == 'picam':
       self._cam = sen.server.PiCam(publish_method = self._pub_socket.publish)
-      self._logger.info('Connecting to picam..')
+      self._logger.info('Initiating PiCam..')
 
     # Publish attributes
     self._pub_attributes = {'BB':                   {'enabled': False, 'name': 'boundingBox'},
@@ -352,6 +357,9 @@ class Server:
     if not self.from_owner(msg):
       descr = 'Requester ({}) is not the DSS owner'.format(msg['id'])
       answer = dss.auxiliaries.zmq.nack(fcn, descr)
+    # Test in controls
+    elif self._in_controls != 'APPLICATION':
+      answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
     # Test if disabled algorithm is the running task
     elif not enable and self._cam._status_msg == cv_algorithm:
       answer = dss.auxiliaries.zmq.nack(fcn, 'Cannot disable algorithm not running')
@@ -535,4 +543,4 @@ class Server:
     #Unregister from CRM
     if self._crm:
       self._crm.unregister()
-    self._logger.info('DSS Server exited correctly. Have a nice day!')
+    self._logger.info('SEN Server exited correctly. Have a nice day!')

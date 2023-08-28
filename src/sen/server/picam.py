@@ -4,12 +4,18 @@ import threading
 import random
 import time
 import logging
+import json
+
 import dss.auxiliaries
+from dss.auxiliaries.config import config, config_path
+
 class PiCam():
 
 
   def __init__(self, publish_method):
+    # TODO, why does this not work?
     self.logger = logging.getLogger(__name__)
+    self.logger.info('PiCam init method')
 
     self._name = 'Raspbery pi cam'
     self._status_msg = ''
@@ -20,6 +26,15 @@ class PiCam():
     self._cv_algorithms = ['boundingBox', 'objectDetection']
     #self._cv_algorithm = None
     self._abort_task = False
+
+    # Demonstration of config data
+    try:
+      calibration = config['SensorCalibration']
+      print(f'printing congfigdata from file found at: {config_path}')
+      print(json.dumps(calibration, indent = 4))
+      self.logger.info(f'Calibration data: {calibration}')
+    except:
+      print('\n WARNING No calibration data found. Make sure to add calibration data to config file \n')
 
     self._main_thread_active = True
     self._thread_main = threading.Thread(target=self._main_thread, daemon=True)

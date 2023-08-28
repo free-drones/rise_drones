@@ -1,25 +1,25 @@
 .. |DSS| replace:: Drone Safety System
 .. |CRM| replace:: Central Resource Manager
-.. |SSS| replace:: Sensor Safety System
+.. |SEN| replace:: Sensor System
 
 .. role:: python(code)
   :language: python
 
-.. _sssapi:
+.. _senapi:
 
-|SSS| API
+|SEN| API
 ========================
 
-.. index:: SSS, Snesor Safety System
+.. index:: SEN, Snesor Safety System
 
-The |SSS| is a middleware that makes it easy to interact with sensors in
-differnet ways. A SSS is much like a DSS, it responds to requests, has publish
-ports for different streams, has an owner and registers to the |CRM|. The |SSS|
+The |SEN| is a middleware that makes it easy to interact with sensors in
+differnet ways. A SEN is much like a DSS, it responds to requests, has publish
+ports for different streams, has an owner and registers to the |CRM|. The |SEN|
 offers applications to connect and control a sensor via an unified API. The
-|SSS| currently supports raspberry pi cam.
+|SEN| currently supports raspberry pi cam.
 
-The |SSS| takes care of the low level functionality. An application software
-connects to the |SSS| and requests sensorinformation. Applications can be
+The |SEN| takes care of the low level functionality. An application software
+connects to the |SEN| and requests sensorinformation. Applications can be
 written in any language and be hosted anywhere on the network. The communication
 library ZeroMQ is used to share information between entities independent on
 architecture and code base.
@@ -46,13 +46,13 @@ it.
 Communication
 --------------
 
-.. index:: SSS, Communication
+.. index:: SEN, Communication
 
-The |SSS| offers three external interfaces towards an application. To
+The |SEN| offers three external interfaces towards an application. To
 support any code base in the application, commands are encoded in
 serialised JSON objects and transferred via zeroMQ library.
 
-- DSS Ctrl Reply-socket where the application can call functions and
+- SEN Ctrl Reply-socket where the application can call functions and
   receive ack/nack and information
 
 - Info Publish-socket where data streams can be published, e.g.
@@ -60,7 +60,7 @@ serialised JSON objects and transferred via zeroMQ library.
 
 - Data Publish-socket for bigger data structures, e.g. photos
 
-Available commands are described in :ref:`ssscontrolAPI`.
+Available commands are described in :ref:`sencontrolAPI`.
 
 The socket ports for non CRM operations are described below. In CRM
 operations the CRM will present the ip and Ctrl-Reply-socket port for
@@ -79,10 +79,10 @@ are open for all connecting ip-numbers.
   }
 
 Each function call must include an application id. This is because
-each SSS is owned by someone (application id), and that the owner has
+each SEN is owned by someone (application id), and that the owner has
 higher level permissions than non-owners. Some commands requires that
-the command is sent from the SSS owner in order to be acknowledged by
-the SSS, while some commands can be used by everyone. This is
+the command is sent from the SEN owner in order to be acknowledged by
+the SEN, while some commands can be used by everyone. This is
 explained in more detail in the Nack reasons for each command in the
 API.
 
@@ -101,12 +101,12 @@ between image horizontal axis and the horizon defines roll angle.
 
 
 
-.. _ssscontrolAPI:
+.. _sencontrolAPI:
 
-SSS Ctrl-link API
+SEN Ctrl-link API
 -----------------
 
-.. index:: SSS; Ctrl-link API
+.. index:: SEN; Ctrl-link API
 
 General
 ~~~~~~~
@@ -119,14 +119,14 @@ with an ack or a nack where the key :python:`"call"` holds the name of
 the calling function. A generic example follows:
 
 .. code-block:: json
-  :caption: Generic function call from application to |SSS|
+  :caption: Generic function call from application to |SEN|
   :linenos:
 
   {
     "fcn": "<function name>", "id": "<requestor id>"
   }
 
-Response from |SSS| is an ack or a nack. The key :python:`"call"`
+Response from |SEN| is an ack or a nack. The key :python:`"call"`
 carries the name of the function called. Some functions uses the ack
 reply to transfer data, which can be seen in the listings of the API
 below. A nack includes the key :python:`"description"` that carries a
@@ -158,10 +158,10 @@ Fcn: ``heart_beat``
 .. compatibility:: badge
   :py-client: verified
 
-The |SSS| tracks the activity from the application to survey if the
+The |SEN| tracks the activity from the application to survey if the
 application is still alive. Each and every function call from
-the application to the |SSS| acts as a heartbeat. If no other messages
-are sent from the application to the |SSS|, the application shall call
+the application to the |SEN| acts as a heartbeat. If no other messages
+are sent from the application to the |SEN|, the application shall call
 the ``heart_beat`` function to maintain the link integrity. The link
 is considered degraded after 5 seconds and lost after 10 seconds.
 
@@ -171,21 +171,21 @@ described below.
 |CRM| not used behaviour:
 _________________________
 
-The |SSS| will do nothing.
+The |SEN| will do nothing.
 
 |CRM| is used behaviour:
 _________________________
 
-The |SSS| will notify the CRM using the function `app_lost`. If it receives an
-ack, the |SSS| will reset the lost link counter. In the meantime the |CRM| will
-launch an application that claims ownership of the |SSS| and will send heart
-beats and try to land the SSS (heritage from DSS). If the lost link counter
+The |SEN| will notify the CRM using the function `app_lost`. If it receives an
+ack, the |SEN| will reset the lost link counter. In the meantime the |CRM| will
+launch an application that claims ownership of the |SEN| and will send heart
+beats and try to land the SEN (heritage from DSS). If the lost link counter
 reaches the limit for the second time without receiving any heartbeats in
-between the |SSS| will engage the autopilot implementation of RTL (heritage from
+between the |SEN| will engage the autopilot implementation of RTL (heritage from
 DSS).
 
 
-If it receives a nack (or no response) |SSS| will do nothing.
+If it receives a nack (or no response) |SEN| will do nothing.
 
 .. code-block:: json
   :caption: Function call ``heart_beat``
@@ -196,7 +196,7 @@ If it receives a nack (or no response) |SSS| will do nothing.
     "id": "<requestor id>"
   }
 
-The SSS responds to the ``heart_beat`` function call with an ack.
+The SEN responds to the ``heart_beat`` function call with an ack.
 
 .. code-block:: json
   :caption: Response to ``heart_beat``
@@ -208,16 +208,16 @@ The SSS responds to the ``heart_beat`` function call with an ack.
   }
 
 **Nack reasons:**
-  - Requester (``id``) is not the SSS owner
+  - Requester (``id``) is not the SEN owner
 
-  .. _fcnsssgetinfo:
+  .. _fcnsengetinfo:
 
 Fcn: get_info
 ~~~~~~~~~~~~~
 
 
-The function ``get_info`` requests connection information from the SSS.
-The SSS answers with an ack and the applicable information.
+The function ``get_info`` requests connection information from the SEN.
+The SEN answers with an ack and the applicable information.
 
 .. code-block:: json
   :caption: Function call: ``get_info``
@@ -243,7 +243,7 @@ The SSS answers with an ack and the applicable information.
 **Nack reasons:**
   - None
 
-.. _fcnssswhocontrols:
+.. _fcnsenwhocontrols:
 
 Fcn: ``who_controls``
 ~~~~~~~~~~~~~~~~~~~~~
@@ -252,15 +252,13 @@ Fcn: ``who_controls``
   :py-client: verified
 
 The function ``who_controls`` requests who is in control of the sensor, the
-"APPLICATION" (sensor application) the "PILOT" (pilot in command) or the "SSS"
-itself. While the pilot is in control the |SSS| is not allowed to control the
+"APPLICATION" (sensor application) the "PILOT" (pilot in command) or the "SEN"
+itself. While the pilot is in control the |SEN| is not allowed to control the
 sensor. This is a safety feature heritage from DSS, it might be used in future
 but for now APPLICATION is always in controls.
 
 The response holds the key "in_controls" that carries the string "PILOT",
-"APPLICATION" or "SSS". CRM is treated as an application.
-
-.. todo:: Should operator == PILOT be a nack reason for all commands affecting the drone?
+"APPLICATION" or "SEN". CRM is treated as an application.
 
 .. code-block:: json
   :caption: Function call: ``who_controls``
@@ -285,7 +283,7 @@ The response holds the key "in_controls" that carries the string "PILOT",
   - None
 
 
-.. _fcnsssgetowner:
+.. _fcnsengetowner:
 
 Fcn: ``get_owner``
 ~~~~~~~~~~~~~~~~~~~~~
@@ -293,7 +291,7 @@ Fcn: ``get_owner``
 .. compatibility:: badge
   :py-client: -
 
-The function ``get_owner`` requests the registered owner of the SSS.
+The function ``get_owner`` requests the registered owner of the SEN.
 
 The response holds the key "owner" that carries the string with the
 application id of the owner. The default owner is "da000".
@@ -321,7 +319,7 @@ application id of the owner. The default owner is "da000".
   - None
 
 
-.. _fcnssssetowner:
+.. _fcnsensetowner:
 
 Fcn: ``set_owner``
 ~~~~~~~~~~~~~~~~~~~~~
@@ -329,7 +327,7 @@ Fcn: ``set_owner``
 .. compatibility:: badge
   :py-client: -
 
-The function ``set_owner`` sets the SSS owner. The function call holds
+The function ``set_owner`` sets the SEN owner. The function call holds
 the key "owner" with a string with the new owners id. The reply holds
 an ack or a nack.
 
@@ -350,7 +348,7 @@ an ack or a nack.
 
 
 
-.. _fcnsssgetidle:
+.. _fcnsengetidle:
 
 Fcn: ``get_idle``
 ~~~~~~~~~~~~~~~~~
@@ -383,7 +381,7 @@ running or media is beeing streamed for example, otherwise true.
   - None
 
 
-.. _fcnsssgetpose:
+.. _fcnsengetpose:
 
 Fcn: ``get_pose``
 ~~~~~~~~~~~~~~~~~~
@@ -428,7 +426,7 @@ running task.
   - None
 
 
-.. _fcnssssetpose:
+.. _fcnsenetpose:
 
 Fcn: ``set_pose``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -461,7 +459,7 @@ north].
   - None
 
 
-.. _fcnssssetgimbal:
+.. _fcnsenetgimbal:
 
 Fcn: ``set_gimbal``
 ~~~~~~~~~~~~~~~~~~~
@@ -488,7 +486,7 @@ the gimbal in use will just be ignored.
   }
 
 **Nack reasons:**
-  - Requester is not the SSS owner
+  - Requester is not the SEN owner
   - Application is not in controls
   - Roll, pitch or yaw is out of range for the gimbal
 
@@ -522,7 +520,7 @@ The key ``enable`` takes a bool to enable or disable the algorithm.
   }
 
 **Nack reasons:**
-  - Requester is not the SSS owner
+  - Requester is not the SEN owner
   - Cannot disable algorithm not running
   - Algorithm not supported, <stream>
 
@@ -792,7 +790,7 @@ The key ``enable`` takes a bool to enable or disable the algorithm.
 ..   - Requester is not the DSS owner
 
 
-.. _fcnsssdatastream:
+.. _fcnsendatastream:
 
 Fcn: ``data_stream``
 ~~~~~~~~~~~~~~~~~~~~
@@ -816,8 +814,8 @@ BB         Bounding box
 OD         Object detection
 =========  =========================
 
-SSS will publish data as soon as new data is available. The format
-of the published data is described in the :ref:`sssinfolinkapi`.
+SEN will publish data as soon as new data is available. The format
+of the published data is described in the :ref:`seninfolinkapi`.
 
 .. code-block:: json
   :caption: Function call: ``data_stream``
@@ -843,13 +841,13 @@ of the published data is described in the :ref:`sssinfolinkapi`.
   }
 
 
-.. _sssinfolinkapi:
+.. _seninfolinkapi:
 
-SSS Info-link API
+SEN Info-link API
 -----------------
 
 Streams of information can be controlled using the function
-:ref:`fcnsssdatastream`. The information is published on the Info-socket
+:ref:`fcnsendatastream`. The information is published on the Info-socket
 together with the corresponding attribute as topic. The format for each
 attribute is described in the following sections.
 
@@ -987,9 +985,9 @@ for height.
 ..   }
 
 
-.. .. _sssdatalinkapi:
+.. .. _sendatalinkapi:
 
-.. SSS Data-link API
+.. SEN Data-link API
 .. -----------------
 
 .. When data is requested from the |DSS|, it publishes the data on the Data-socket

@@ -18,7 +18,10 @@ _logger = logging.getLogger(__name__)
 
 def _init():
   global config
+  global config_path
+
   config = {}
+  config_path = ""
 
   paths = [Path.home().joinpath('.rise_drones', '.config'),
            Path.cwd().parent.joinpath('.config'),
@@ -28,6 +31,7 @@ def _init():
       print(f'Configuration file found at "{path}"')
       with open(path) as json_file:
         config = json.load(json_file)
+        config_path = path
       return
 
   print(f'No configuration file found at {paths}')
