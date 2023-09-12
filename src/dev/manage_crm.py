@@ -7,8 +7,6 @@ crm instance.'''
 import argparse
 import json
 
-import zmq
-
 import sys
 import os
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
@@ -42,7 +40,7 @@ def _main():
 
   # Create connection string for crm. TODO Open pandora's box and change command line string instead
   crm_connection_string = args.ip + ":" + int(args.port)
-  crm = dss.client.CRM(zmq.Context(), crm_connection_string, app_name='manage_crm.py', app_id='root')
+  crm = dss.client.CRM(dss.auxiliaries.zmq.Context(), crm_connection_string, app_name='manage_crm.py', app_id='root')
 
   if args.delStaleClients:
     answer = crm.delStaleClients()

@@ -13,8 +13,6 @@ import json
 import logging
 import time
 
-import zmq
-
 import dss.auxiliaries
 import dss.client
 
@@ -37,7 +35,7 @@ class Client:
     self._app_id = 'da000'
 
     self._alive = False
-    self._context = context if context else zmq.Context()
+    self._context = context if context else dss.auxiliaries.zmq.Context()
     self._dss = None
     self._exception_handler = exception_handler
     self._input_handler = None
@@ -211,7 +209,7 @@ class Client:
         if self._input_handler:
           try:
             msg = self._input_socket.recv_json()
-          except zmq.error.Again:
+          except dss.auxiliaries.exception.Again:
             pass
           else:
             msg = json.loads(msg)

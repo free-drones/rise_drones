@@ -7,8 +7,6 @@ import threading
 import time
 import traceback
 
-import zmq
-
 import dss.auxiliaries
 import dss.client
 
@@ -21,7 +19,7 @@ class DroneHelper:
   def __init__(self, id, crm_ip, crm_port):
     self._logger = logging.getLogger(__name__)
 
-    self._context = zmq.Context()
+    self._context = dss.auxiliaries.zmq.Context()
     self._id = id
     self._crm_ip = crm_ip
     self._crm_socket = dss.auxiliaries.zmq.Req(self._context, crm_ip, crm_port)
@@ -59,7 +57,7 @@ class DroneHelper:
     while self._alive:
       try:
         msg = self._rep_socket.recv_json()
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         continue # timeout: no message received; try again
 
       msg = json.loads(msg)

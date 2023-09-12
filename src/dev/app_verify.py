@@ -13,7 +13,6 @@ import threading
 import time
 import traceback
 import numpy as np
-import zmq
 
 import sys
 import os
@@ -33,7 +32,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_verify')
-_context = zmq.Context()
+_context = dss.auxiliaries.zmq.Context()
 
 #--------------------------------------------------------------------#
 # Verify application for one drone - README.

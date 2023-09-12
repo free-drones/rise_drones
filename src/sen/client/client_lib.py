@@ -210,7 +210,7 @@ class Client:
         if self._input_handler:
           try:
             msg = self._input_socket.recv_json()
-          except dss.auxiliaries.zmq.zmq.error.Again:
+          except dss.auxiliaries.exception.Again:
             pass
           else:
             msg = json.loads(msg)

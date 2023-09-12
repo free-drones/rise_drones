@@ -6,14 +6,18 @@ import logging
 import threading
 import time
 import traceback
-import sys
 import json
-import zmq
 import math
+
+import sys
+import os
+
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 import dss.client
-from mqtt_agent.mqtt_agent import MqttAgent
+from  mqtt_agent.mqtt_agent import MqttAgent
 
 #--------------------------------------------------------------------#
 
@@ -25,7 +29,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.monitor')
-_context = zmq.Context()
+_context = dss.auxiliaries.zmq.Context()
 
 #--------------------------------------------------------------------#
 class Monitor():

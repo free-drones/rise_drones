@@ -17,8 +17,6 @@ import traceback
 import copy
 import queue
 
-import zmq
-
 import dss.auxiliaries
 import dss.client
 import dss.auxiliaries.config
@@ -33,7 +31,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_skara')
-_context = zmq.Context()
+_context = dss.auxiliaries.zmq.Context()
 
 #--------------------------------------------------------------------#
 # App skara- README.
@@ -106,6 +104,8 @@ class AppSkara():
     self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
     self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
     self.cyclist_point = Point(self.road_heading, self.road_length)
+    _logger.info(f'Ref road heading: {self.road_heading}, ref road length: {self.road_length}')
+
      # Create roles involved depending on number of drones that should be used
     self.wait_time = {}
     if n_drones == 1:
@@ -124,6 +124,8 @@ class AppSkara():
     self.geofence_radius = dss.auxiliaries.config.config['app_skara']['geofence_radius']
     self.takeoff_height = dss.auxiliaries.config.config['app_skara']['takeoff_height']
     self.spotlight_switch_distance = dss.auxiliaries.config.config['app_skara']['spotlight_switch_distance']
+    _logger.info(f'Logger switch distance from config: {self.spotlight_switch_distance}')
+
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       self.spotlight_enabled[role] = False

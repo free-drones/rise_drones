@@ -14,8 +14,6 @@ import threading
 import time
 import traceback
 
-import zmq
-
 import sys
 import os
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
@@ -34,7 +32,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.template')
-_context = zmq.Context()
+_context = dss.auxiliaries.zmq.Context()
 
 #--------------------------------------------------------------------#
 # Template application for one drone - README.

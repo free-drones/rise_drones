@@ -48,8 +48,7 @@ def ned_to_lla(ned:np.array, lla_origin:dict):
 
 def distance_2D(lla_1:dict, lla_2:dict):
   ned_2 = lla_to_ned(lla_2, lla_1)
-  ned_1 = np.array([0, 0, -lla_2['alt']])
-  return math.sqrt(np.sum(ned_2-ned_1)**2)
+  return math.sqrt(ned_2[0]**2+ned_2[1]**2)
 
 def project_point(p1:np.array, p2:np.array, p3:np.array):
   '''Project point p3 to the line between p1 and p2'''

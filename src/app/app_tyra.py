@@ -19,8 +19,6 @@ import threading
 import time
 import traceback
 
-import zmq
-
 import dss.auxiliaries
 
 #--------------------------------------------------------------------#
@@ -308,7 +306,7 @@ class Drone:
             _logger.warning(f'[{self.name}] battery no longer low! =D')
         elif topic == 'LLA':
           self._lla = (msg['lat'], msg['lon'])
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         pass
         #_logger.error('_main_info_dss: Resource temporarily unavailable')
         # -> no message, try again
@@ -344,7 +342,7 @@ class TYRApp:
     self._app_ip = app_ip
 
     self._alive = True
-    self._context = zmq.Context()
+    self._context = dss.auxiliaries.zmq.Context()
 
     # all sockets
     self._app_socket = None # Rep: ANY -> APP
@@ -520,7 +518,7 @@ class TYRApp:
         if topic == 'LLA':
           self._lla = (msg['lat'], msg['lon'], msg['alt'])
           _logger.info(f'Tyramote position: {self._lla}')
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         pass # -> no message, try again
       except:
         _logger.error(f'unexpected exception\n{traceback.format_exc()}')
@@ -561,7 +559,7 @@ class TYRApp:
       try:
         msg = self._app_socket.recv_json()
         timestamp = now
-      except zmq.error.Again as error:
+      except dss.auxiliaries.exception.Again as error:
         if now - timestamp > 10: #seconds
           self.kill() # unregister, close, CRM will take care of the drones!
         continue # timeout: no message received; try again

@@ -12,7 +12,7 @@ TODO: Tell the client to enable logging using their request/reply socket
 import argparse
 import logging
 
-import zmq
+#import zmq
 
 import sys
 import os
@@ -35,7 +35,7 @@ def _main():
   dss.auxiliaries.logging.configure(f'{args.id}.log', stdout=args.stdout, rotating=True, loglevel='info')
   _logger = logging.getLogger(f'dss.{args.id}')
 
-  context = zmq.Context()
+  context = dss.auxiliaries.zmq.Context()
 
   crm = dss.auxiliaries.zmq.Req(context, config["default_crm_ip"], config["default_crm_port"])
   answer = crm.send_and_receive({'id': 'root', 'fcn': 'clients', 'filter': args.id})
@@ -56,7 +56,7 @@ def _main():
     try:
       topic, msg = socket.recv()
       _logger.info('%s: %s', topic, str(msg)[:256])
-    except zmq.error.Again:
+    except dss.auxiliaries.exception.Again:
       pass
     except KeyboardInterrupt:
       socket = None # break the loop

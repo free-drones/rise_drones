@@ -7,7 +7,7 @@ import logging
 import string
 
 import dss.auxiliaries
-import zmq
+
 import dss.client
 import numpy as np
 
@@ -38,7 +38,7 @@ class UsspClientLib:
     self._logger = logging.getLogger(__name__)
     self._logger.info('U-space Client Lib')
 
-    self._context = context if context else zmq.Context()
+    self._context = context if context else dss.auxiliaries.zmq.Context()
     self._ussp_client = None
     self._app_id = app_id
     self._nrid_msgs = {}

@@ -7,8 +7,6 @@ import logging
 import time
 import traceback
 
-import zmq
-
 import dss.auxiliaries
 
 #--------------------------------------------------------------------#
@@ -33,7 +31,7 @@ class AppClient:
     self._app_ip = crm_ip # HACK? APP is running on the same system as CRM
 
     self._alive = True
-    self._context = zmq.Context()
+    self._context = dss.auxiliaries.zmq.Context()
 
     # all sockets
     self._app_socket = None #Rep: ANY -> APP
@@ -73,7 +71,7 @@ class AppClient:
     while self._alive:
       try:
         msg = self._app_socket.recv_json()
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         continue # timeout: no message received; try again
 
       msg = json.loads(msg)

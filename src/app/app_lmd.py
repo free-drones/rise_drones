@@ -27,7 +27,7 @@ import time
 import traceback
 import uuid
 import datetime
-import zmq
+
 
 import dss.auxiliaries
 import dss.client
@@ -42,8 +42,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_lmd')
-_context = zmq.Context()
-
+_context = dss.auxiliaries.zmq.Context()
 
 class Waypoint():
   def __init__(self, lat=0.0, lon=0.0, alt=0.0):

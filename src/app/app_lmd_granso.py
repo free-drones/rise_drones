@@ -23,8 +23,6 @@ import threading
 import time
 import traceback
 
-import zmq
-
 import dss.auxiliaries
 import dss.client
 
@@ -38,7 +36,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_lmd')
-_context = zmq.Context()
+_context = dss.auxiliaries.zmq.Context()
 
 
 class Waypoint():

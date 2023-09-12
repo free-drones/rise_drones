@@ -263,10 +263,10 @@ class AppAngelSim():
     # Request app_skara to follow the drone
     self.send_follow_her(enable=True)
     # Wait for other drones to launch
-    sleep_time = 60
+    sleep_time = 40
     start_time = time.time()
     while time.time() < start_time + sleep_time:
-      _logger.info(f"Waiting for drones to start, time remaining: {start_time + sleep_time - time.time()}")
+      _logger.info(f"Waiting for drones to start, time remaining: {round(start_time + sleep_time - time.time())}")
       time.sleep(1.0)
     # Request controls from PILOT
     _logger.info("Requesting controls")
@@ -280,6 +280,7 @@ class AppAngelSim():
     # Upload mission
     if "lat" in mission["id0"]:
       self.drone.upload_mission_LLA(mission)
+      _logger.info(f'Uploaded mission: {mission}')
     else:
       self.drone.upload_mission_XYZ(mission)
 
