@@ -182,7 +182,7 @@ class Hexacopter:
     connect = "tcp:" + connect
     self.logger.info('Connecting to vehicle on %s using baudrate %s...', connect, baud)
     try:
-      self.vehicle = dronekit.connect(connect, baud=baud, wait_ready=True, heartbeat_timeout=10)
+      self.vehicle = dronekit.connect(connect, baud=baud, wait_ready=False, heartbeat_timeout=10)
     except dronekit.APIException as exception:
       self.logger.error('Connection failed: %s', exception)
       raise
