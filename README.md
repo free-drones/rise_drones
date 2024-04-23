@@ -22,7 +22,13 @@ Central Resource Manager (CRM) is a resource manager that runs in the network. T
 
 > pip install -r requirements.txt
 
-2. Install SITL - ardupilot
+2. Add src directory to pythonpath
+
+> cd src
+> export PYTHONPATH=`pwd` 
+
+
+3. Install SITL - ardupilot
 
 > git clone git@github.com:ArduPilot/ardupilot.git <br/>
 > git submodule update --init --recursive <br/>
