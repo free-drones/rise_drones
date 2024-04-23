@@ -26,7 +26,7 @@ class DSS:
     self._port = port
     self._dss_id = dss_id
 
-    self._socket = dss.auxiliaries.zmq.Req(context, ip, port, label=dss_id, timeout=timeout, self_id=app_id)
+    self._socket = dss.auxiliaries.zmq_lib.Req(context, ip, port, label=dss_id, timeout=timeout, self_id=app_id)
     self._socket.start_heartbeat(app_id)
 
   def __del__(self):
@@ -55,8 +55,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -67,8 +67,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # Take the returned id and store it in the class
     if answer['id'] != self._dss_id:
       self._dss_id = answer['id']
@@ -82,8 +82,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['in_controls']
 
@@ -94,8 +94,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['owner']
 
@@ -106,8 +106,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -121,8 +121,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -133,8 +133,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['idle']
 
@@ -145,8 +145,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer
 
@@ -159,8 +159,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -171,8 +171,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -184,8 +184,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -196,8 +196,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -208,8 +208,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -221,8 +221,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -237,8 +237,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -251,8 +251,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -265,8 +265,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -279,8 +279,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -292,8 +292,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -305,8 +305,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -318,8 +318,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -331,8 +331,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -350,8 +350,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -365,8 +365,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -380,8 +380,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -394,8 +394,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -406,8 +406,8 @@ class DSS:
     msg['brightness'] = brightness
     # send and receive msg
     answer = self._socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -429,8 +429,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -441,8 +441,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['armed']
 
@@ -453,8 +453,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['currentWP'], answer['finalWP']
 
@@ -465,8 +465,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['flightmode']
 
@@ -479,8 +479,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['metadata']
 
@@ -491,8 +491,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['posD']
 
@@ -504,8 +504,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return answer['PWM']
 
@@ -516,8 +516,8 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return
 
@@ -530,7 +530,7 @@ class DSS:
     # send and receive message
     answer = self._socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     return

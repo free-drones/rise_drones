@@ -5,11 +5,6 @@
 import time
 import argparse
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
 
 
@@ -23,9 +18,9 @@ def _main():
   parser.add_argument('--port', default=5559, help='port to publish on')
   args = parser.parse_args()
 
-  context = dss.auxiliaries.zmq.Context()
-  socket = dss.auxiliaries.zmq.Pub(context, ip='*', port=args.port, timeout=1000)
-  _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
+  context = dss.auxiliaries.zmq_lib.Context()
+  socket = dss.auxiliaries.zmq_lib.Pub(context, ip='*', port=args.port, timeout=1000)
+  _print('Local IP:' + dss.auxiliaries.zmq_lib.get_ip_address())
   _print('Publishing messages to all ip (*) at port :' + str(args.port))
   _print('Every second mess with topic \'test_topic\', everysecond with topic \'speed\'')
 
@@ -37,10 +32,10 @@ def _main():
       topic1 = 'test_topic'
       topic2 = 'speed'
       socket.publish(topic=topic1,msg=msg1)
-      _print('Published topic and message: ' + dss.auxiliaries.zmq.mogrify(topic1, msg1))
+      _print('Published topic and message: ' + dss.auxiliaries.zmq_lib.mogrify(topic1, msg1))
       time.sleep(1)
       socket.publish(topic=topic2,msg=msg2)
-      _print('Published topic and message: ' + dss.auxiliaries.zmq.mogrify(topic2, msg2))
+      _print('Published topic and message: ' + dss.auxiliaries.zmq_lib.mogrify(topic2, msg2))
       time.sleep(1)
     except KeyboardInterrupt:
       socket.close()

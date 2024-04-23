@@ -31,7 +31,7 @@
 
 # _logger = logging.getLogger('app_drone_link')
 # _context = zmq.Context()
-# IP = dss.auxiliaries.zmq.get_ip()
+# IP = dss.auxiliaries.zmq_lib.get_ip()
 # alive_event = threading.Event()
 # update_queue = queue.Queue()
 
@@ -92,12 +92,12 @@
 #         # The application sockets
 #         # Use ports depending on subnet used to pass RISE firewall
 #         # Rep: ANY -> APP
-#         self._app_socket = dss.auxiliaries.zmq.Rep(_context,self.ip, label='link', port=config["app_drone_link"]["default_port_reply"])
+#         self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context,self.ip, label='link', port=config["app_drone_link"]["default_port_reply"])
 #         _ = self.crm.register(self.ip, self._app_socket.port)
 #         # Pub socket APP -> ANY
-#         self._pub_socket = dss.auxiliaries.zmq.Pub(_context, self.ip, label='link_pub', port=config["app_drone_link"]["default_port_pub"])
+#         self._pub_socket = dss.auxiliaries.zmq_lib.Pub(_context, self.ip, label='link_pub', port=config["app_drone_link"]["default_port_pub"])
 #         # Info socket, request info from crm via monitor
-#         self._info_socket = dss.auxiliaries.zmq.Req(_context, self.ip, label='req for monitor', port=config["app_drone_link"]["default_port_info"])
+#         self._info_socket = dss.auxiliaries.zmq_lib.Req(_context, self.ip, label='req for monitor', port=config["app_drone_link"]["default_port_info"])
 
 #         self._commands = {'connect_to_drone':       {'request': self._request_connect_to_drone},
 #                           'get_list_of_drones':     {'request': self._request_get_list_of_drones},
@@ -136,7 +136,7 @@
 #             answer = request(msg)
 #             #print(f"answer is : {answer}")
 #           else:
-#             answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+#             answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
 #           answer = json.dumps(answer)
 #           _logger.info(f"Sending answer: {answer}")
 #           #print("sending msg back")
@@ -728,16 +728,16 @@
 #     self.mission_lock = threading.Lock()
 
 #     # Find the VPN ip of host machine
-#     auto_ip = dss.auxiliaries.zmq.get_ip()
+#     auto_ip = dss.auxiliaries.zmq_lib.get_ip()
 #     if auto_ip != app_ip:
 #       _logger.warning("Automatic get ip function and given ip does not agree: %s vs %s", auto_ip, app_ip)
 
 #     # The application sockets
 #     # Use ports depending on subnet used to pass RISE firewall
 #     # Rep: ANY -> APP
-#     self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+#     self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
 #     # Pub: APP -> ANY
-#     self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+#     self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
 #     # Start the app reply thread
 #     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -806,7 +806,7 @@
 #           request = self._commands[fcn]['request']
 #           answer = request(msg)
 #         else :
-#           answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+#           answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
 #         answer = json.dumps(answer)
 #         self._app_socket.send_json(answer)
 #       except:
@@ -843,7 +843,7 @@
 #     self.drone._dss.data_stream('LLA', True)
 #     self.drone._dss.data_stream('battery', True)
 #     # Create info socket and start listening thread
-#     info_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "info " + self.crm.app_id)
+#     info_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "info " + self.crm.app_id)
 #     #print(self._dss_data_thread_active)
 #     while self._dss_info_thread_active:
 #       try:
@@ -884,16 +884,16 @@
 #   def _main_data_dss(self, ip, port):
 #     '''The main function for subscribing to data messages from the DSS.)'''
 #     # Create data socket and start listening thread
-#     data_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "data " + self.crm.app_id)
+#     data_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "data " + self.crm.app_id)
 #     while self._dss_data_thread_active:
 #       try:
 #         (topic, msg) = data_socket.recv()
 #         if topic in ('photo', 'photo_low'):
-#           data = dss.auxiliaries.zmq.string_to_bytes(msg["photo"])
+#           data = dss.auxiliaries.zmq_lib.string_to_bytes(msg["photo"])
 #           photo_filename = msg['metadata']['filename']
-#           dss.auxiliaries.zmq.bytes_to_image(photo_filename, data)
+#           dss.auxiliaries.zmq_lib.bytes_to_image(photo_filename, data)
 #           json_filename = photo_filename[:-4] + ".json"
-#           dss.auxiliaries.zmq.save_json(json_filename, msg['metadata'])
+#           dss.auxiliaries.zmq_lib.save_json(json_filename, msg['metadata'])
 #           _logger.info("Photo saved to " + msg['metadata']['filename']  + "\r")
 #           _logger.info("Photo metadata saved to " + json_filename + "\r")
 #           self.transferred += 1
@@ -909,8 +909,8 @@
 #     '''Ask the CRM for a drone with specified capabilities 
 #       (default simulated ['SIM']) and connect to it'''
 #     answer = self.crm.get_drone(capabilities)
-#     if dss.auxiliaries.zmq.is_nack(answer):
-#       _logger.error(f'Did not receive a drone: {dss.auxiliaries.zmq.get_nack_reason(answer)}')
+#     if dss.auxiliaries.zmq_lib.is_nack(answer):
+#       _logger.error(f'Did not receive a drone: {dss.auxiliaries.zmq_lib.get_nack_reason(answer)}')
 #       _logger.info('No available drone')
 #       self.drone_connected = False
 #       return
@@ -929,14 +929,14 @@
 #     #_______________________________________________________________________
 #   def _request_push_dss(self, msg):
 #     '''Not implemented'''
-#     answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Not implemented')
+#     answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Not implemented')
 #     return answer
 
 
 #   def _request_get_info(self, msg):
 #     '''Returns info about the application, specifically the app_id
 #        and the ports for info/data streams'''
-#     answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+#     answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
 #     answer['id'] = self.crm.app_id
 #     answer['info_pub_port'] = self._info_socket.port
 #     answer['data_pub_port'] = None
@@ -1001,7 +1001,7 @@
 #     # Unregister APP from CRM
 #     _logger.info("Unregister from CRM")
 #     answer = self.crm.unregister()
-#     if not dss.auxiliaries.zmq.is_ack(answer):
+#     if not dss.auxiliaries.zmq_lib.is_ack(answer):
 #       _logger.error('Unregister failed: {answer}')
 #     _logger.info("CRM socket closed")
 
@@ -1212,7 +1212,7 @@
 
 # def _main(app_ip= None, crm = '10.44.170.10:17700', app_id = "app_drone_link"):
 
-#   subnet = dss.auxiliaries.zmq.get_subnet(ip=IP)
+#   subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=IP)
 
 #   dss.auxiliaries.logging.configure('app_drone_link', stdout=False, rotating=True, loglevel='debug', subdir=subnet)
 #   alive_event.set()

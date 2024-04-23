@@ -7,11 +7,6 @@
 import argparse
 import json
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
 from dss.auxiliaries.config import config
 
@@ -45,9 +40,9 @@ def _main():
   parser.add_argument('--port', default=config["CRM"]["default_crm_port"], help=f'{config["CRM"]["default_crm_port"]}')
   args = parser.parse_args()
 
-  context = dss.auxiliaries.zmq.Context()
-  socket = dss.auxiliaries.zmq.Rep(context, port=args.port)
-  _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
+  context = dss.auxiliaries.zmq_lib.Context()
+  socket = dss.auxiliaries.zmq_lib.Rep(context, port=args.port)
+  _print('Local IP:' + dss.auxiliaries.zmq_lib.get_ip_address())
   _print('Listening for incoming messages on port: ' + str(args.port))
 
   while socket:

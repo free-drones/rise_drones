@@ -27,7 +27,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.selfie')
-_context = dss.auxiliaries.zmq.Context()
+_context = dss.auxiliaries.zmq_lib.Context()
 
 #--------------------------------------------------------------------#
 class Selfie():
@@ -50,7 +50,7 @@ class Selfie():
 
     # Find the VPN ip of host machine
     self._app_ip = app_ip
-    auto_ip = dss.auxiliaries.zmq.get_ip()
+    auto_ip = dss.auxiliaries.zmq_lib.get_ip()
     if auto_ip != app_ip:
       _logger.warning('Automatic get ip function and given ip does not agree: %s vs %s', auto_ip, app_ip)
 
@@ -59,9 +59,9 @@ class Selfie():
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -115,7 +115,7 @@ class Selfie():
     # Unregister APP from CRM
     _logger.info('Unregister from CRM')
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: %s', answer)
     _logger.info('CRM socket closed')
 
@@ -142,7 +142,7 @@ class Selfie():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else :
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -160,13 +160,13 @@ class Selfie():
 #--------------------------------------------------------------------#
 # Request: 'push_dss'
   def _request_push_dss(self, msg):
-    answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Not implemented')
+    answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Not implemented')
     return answer
 
 #--------------------------------------------------------------------#
 # Request: 'get_info'
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
@@ -177,11 +177,11 @@ class Selfie():
 #--------------------------------------------------------------------#
   # Request: 'follow_her'
   def _request_follow_her(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Check nack reasons
     if not self.from_owner(msg) and msg['id'] != "GUI":
       descr = 'Requester ({}) is not the APP owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Accept
     else:
       enable = msg['enable']
@@ -192,7 +192,7 @@ class Selfie():
       else:
         target_drone = msg['target_id']
         self._task_queue.add(self._task_follow_her, target_drone)
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
     return answer
 
 #--------------------------------------------------------------------#
@@ -261,16 +261,16 @@ class Selfie():
 #--------------------------------------------------------------------#
   # Request: 'set_pattern', incoming pattern to be relayed
   def _request_set_pattern(self, msg:dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'pattern']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, pattern} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, pattern} are mandatory')
 
     # Check nack reasons
     if not self.from_owner(msg) and msg['id'] != "GUI":
       descr = 'Requester ({}) is not the APP owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Accept
     else:
       self._pattern = msg
@@ -280,7 +280,7 @@ class Selfie():
       if self.drone.alive:
         self.drone.set_pattern_dict(self._pattern)
       # Ack even if there is no connected drone
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
     return answer
 
 #--------------------------------------------------------------------#
@@ -292,8 +292,8 @@ class Selfie():
 
     # Get a drone
     answer = self.crm.get_drone(force=self._drone_id_arg)
-    if dss.auxiliaries.zmq.is_nack(answer):
-      _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
+    if dss.auxiliaries.zmq_lib.is_nack(answer):
+      _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq_lib.get_nack_reason(answer))
       return
     # We got ack, there is a drone to connect to
 
@@ -327,7 +327,7 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=args.app_ip)
   # Initiate log file
   dss.auxiliaries.logging.configure('app_selfie', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 

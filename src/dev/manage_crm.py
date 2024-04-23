@@ -7,13 +7,7 @@ crm instance.'''
 import argparse
 import json
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
-import dss.client
 from dss.auxiliaries.config import config
 
 #--------------------------------------------------------------------#
@@ -35,22 +29,22 @@ def _main():
   parser.add_argument('--virgin', action='store_true', help='crm will reset client counter')
   args = parser.parse_args()
 
-  subnet = dss.auxiliaries.zmq.get_subnet(port=args.port)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=args.port)
   dss.auxiliaries.logging.configure('manage_crm.log', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   # Create connection string for crm. TODO Open pandora's box and change command line string instead
   crm_connection_string = args.ip + ":" + int(args.port)
-  crm = dss.client.CRM(dss.auxiliaries.zmq.Context(), crm_connection_string, app_name='manage_crm.py', app_id='root')
+  crm = dss.client.CRM(dss.auxiliaries.zmq_lib.Context(), crm_connection_string, app_name='manage_crm.py', app_id='root')
 
   if args.delStaleClients:
     answer = crm.delStaleClients()
-    if dss.auxiliaries.zmq.is_ack(answer, 'delStaleClients'):
+    if dss.auxiliaries.zmq_lib.is_ack(answer, 'delStaleClients'):
       print(f'deleted: {answer["deleted"]}')
     else:
       print(answer)
 
   answer = crm.clients()
-  if dss.auxiliaries.zmq.is_ack(answer, 'clients'):
+  if dss.auxiliaries.zmq_lib.is_ack(answer, 'clients'):
     if args.list:
       print(json.dumps(answer['clients'], indent=2))
     print(f'{len(answer["clients"])} clients are registered')
@@ -67,13 +61,13 @@ def _main():
 
   if args.upgrade:
     answer = crm.upgrade(args.virgin)
-    if dss.auxiliaries.zmq.is_ack(answer, 'upgrade'):
+    if dss.auxiliaries.zmq_lib.is_ack(answer, 'upgrade'):
       print('Updating the crm service...')
     else:
       print(answer)
   elif args.restart:
     answer = crm.restart(args.virgin)
-    if dss.auxiliaries.zmq.is_ack(answer, 'restart'):
+    if dss.auxiliaries.zmq_lib.is_ack(answer, 'restart'):
       print('Restarting the crm service...')
     else:
       print(answer)

@@ -2,17 +2,15 @@
 
 import json
 import logging
-import sys
 import threading
 import time
 import traceback
 
+import dss.auxiliaries
+import sen.server.picam
 
 
-import dss.auxiliaries.exception
-import dss.client
-import sen.server
-from dss.auxiliaries.config import config, config_path
+from dss.auxiliaries.config import config
 
 
 __author__ = 'Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
@@ -44,7 +42,7 @@ class Server:
 
     self._owner = 'da000'
 
-    self._zmq_context = dss.auxiliaries.zmq.Context()
+    self._zmq_context = dss.auxiliaries.zmq_lib.Context()
 
     # This attribute is true if there is a connection to a sensor client
     # application
@@ -59,12 +57,12 @@ class Server:
     app_port = None
 
     # We will connect to crm, set random ports within range.
-    self._serv_socket = dss.auxiliaries.zmq.Rep(self._zmq_context, port=app_port, label='sen', min_port=crm_port+1, max_port=crm_port+49)
-    self._pub_socket = dss.auxiliaries.zmq.Pub(self._zmq_context, port=None, min_port=crm_port+1, max_port=crm_port+50, label='info')
+    self._serv_socket = dss.auxiliaries.zmq_lib.Rep(self._zmq_context, port=app_port, label='sen', min_port=crm_port+1, max_port=crm_port+49)
+    self._pub_socket = dss.auxiliaries.zmq_lib.Pub(self._zmq_context, port=None, min_port=crm_port+1, max_port=crm_port+50, label='info')
     self._logger.info('Starting pub server on %d... done', self._pub_socket.port)
 
     if camera == 'picam':
-      self._cam = sen.server.PiCam(publish_method = self._pub_socket.publish)
+      self._cam =  sen.server.picam.PiCam(publish_method = self._pub_socket.publish)
       self._logger.info('Initiating PiCam..')
 
     # Publish attributes
@@ -120,7 +118,7 @@ class Server:
     # register and start sending heartbeat to the CRM
     self._logger.info(f"registering to CRM with capabilities: {self._capabilities}")
     answer = self._crm.register(self._sen_ip, self._serv_socket.port, type='sen', capabilities=self._capabilities)
-    if dss.auxiliaries.zmq.is_ack(answer):
+    if dss.auxiliaries.zmq_lib.is_ack(answer):
       self._sen_id = answer['id']
       self._logger.info(f"Regitered to CRM, received id {answer['id']}")
     else:
@@ -159,88 +157,88 @@ class Server:
   ######
   # Dummy methods for test
   def _request_test_get_focus(self,msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
     print(f'This is the _request_test_me function called on request test_me. Arguments are {msg}')
-    answer = dss.auxiliaries.zmq.ack(fcn, {'test_get_cam_focus': self._cam.test_cam_get_focus()})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'test_get_cam_focus': self._cam.test_cam_get_focus()})
     return answer
 
   def _request_test_get_name(self,msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'name': self._cam._name})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'name': self._cam._name})
     return answer
   #######
 
   def _request_heart_beat(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Test nack reasons
     if not self.from_owner(msg):
       descr = 'Requester ({}) is not the DSS owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Accept
     else:
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
     return answer
 
   def _request_get_info(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'info_pub_port': self._pub_socket.port, 'data_pub_port': '', 'id': self._sen_id})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'info_pub_port': self._pub_socket.port, 'data_pub_port': '', 'id': self._sen_id})
     return answer
 
   def _request_who_controls(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'in_controls': self._in_controls})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'in_controls': self._in_controls})
     return answer
 
   def _request_get_owner(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn)
+    answer = dss.auxiliaries.zmq_lib.ack(fcn)
     answer['owner'] = self._owner
     return answer
 
   def _request_set_owner(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Test nack reasons
     if not msg['id'] == 'crm':
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Requestor is not CRM')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Requestor is not CRM')
     # Accept
     else:
       new_owner = msg['owner']
       self._owner = new_owner
       # New owner -> reset connected flag
       self._connected = False
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
     return answer
 
 
   def _request_get_idle(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'idle': self._task_event.is_set()})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'idle': self._task_event.is_set()})
     return answer
 
   def _request_get_pose(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'idle': self._task_event.is_set()})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'idle': self._task_event.is_set()})
     # But not implementede so nack
-    answer = dss.auxiliaries.zmq.nack(fcn, desc="Not implemented")
+    answer = dss.auxiliaries.zmq_lib.nack(fcn, desc="Not implemented")
     return answer
 
   def _request_set_pose(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # No nack reasons, accept
-    answer = dss.auxiliaries.zmq.ack(fcn, {'idle': self._task_event.is_set()})
+    answer = dss.auxiliaries.zmq_lib.ack(fcn, {'idle': self._task_event.is_set()})
     # But not implementede so nack
-    answer = dss.auxiliaries.zmq.nack(fcn, desc="Not implemented")
+    answer = dss.auxiliaries.zmq_lib.nack(fcn, desc="Not implemented")
     return answer
 
   def _request_set_gimbal(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Parse
     roll = msg['roll']
     pitch = msg['pitch']
@@ -248,81 +246,81 @@ class Server:
     # Test nack reasons
     if not self.from_owner(msg):
       descr = 'Requester ({}) is not the DSS owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
 
     elif self._in_controls != 'APPLICATION':
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Application is not in controls')
 
     elif False: # TODO, roll pitch yaw is out of range
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Roll, pitch or yaw is out of range fo the gimbal')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Roll, pitch or yaw is out of range fo the gimbal')
     # Accept
     else:
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
       #self._hexa.set_gimbal(msg['roll'], msg['pitch'], msg['yaw'])
     return answer
 
 
   def _request_photo(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Parse
     cmd = msg['cmd']
     # Test nack reasons
     if not self.from_owner(msg):
       descr = 'Requester ({}) is not the DSS owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     elif self._in_controls != 'APPLICATION':
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Application is not in controls')
     elif False: # TODO, Camera resource busy
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Camera resource is busy')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Camera resource is busy')
     elif not cmd in ('take_photo', 'continous_photo', 'download'):
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Cmd faulty')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Cmd faulty')
     # Accept
     else:
       if cmd == 'take_photo':
-        answer = dss.auxiliaries.zmq.ack(fcn)
+        answer = dss.auxiliaries.zmq_lib.ack(fcn)
         answer['description'] = 'take_photo'
         # TODO, take_photo
-        answer = dss.auxiliaries.zmq.nack(fcn, 'Take photo not implemented')
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Take photo not implemented')
       elif cmd == 'continous_photo':
         enable = msg['enable']
         publish = msg['publish'] #'off', 'low' or 'high'
         period = msg['period']
-        answer = dss.auxiliaries.zmq.ack(fcn)
+        answer = dss.auxiliaries.zmq_lib.ack(fcn)
         if enable:
           descr = 'continous_photo enabled'
         else:
           descr = 'continous_photo disabled'
         answer['description'] = descr
         # TODO, enable/disable continous photo
-        answer = dss.auxiliaries.zmq.nack(fcn, 'Continous photo not implemented')
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Continous photo not implemented')
       elif cmd == 'download':
         resolution = msg['resolution']
         index = msg['index']
         # Test more nack reasons
         if False:
-          anser = dss.auxiliaries.zmq.nack(fcn, 'Index out of range' + index)
+          anser = dss.auxiliaries.zmq_lib.nack(fcn, 'Index out of range' + index)
         elif False:
-          anser = dss.auxiliaries.zmq.nack(fcn, 'Index string faulty' + index)
+          anser = dss.auxiliaries.zmq_lib.nack(fcn, 'Index string faulty' + index)
         # Accept
         else:
-          answer = dss.auxiliaries.zmq.ack(fcn)
+          answer = dss.auxiliaries.zmq_lib.ack(fcn)
           answer['description'] = 'download ' + 'index'
           # TODO, download photo
-          answer = dss.auxiliaries.zmq.nack(fcn, 'Download photo not implemented')
+          answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Download photo not implemented')
     return answer
 
   def _request_data_stream(self, msg) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Parse
     stream = msg['stream']
     enable = msg['enable']
     # Test nack reasons
     if stream not in self._pub_attributes:
       descr = 'Stream faulty, ' + stream
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Accept
     else:
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
       # Update publish attributes dict
       self._pub_attributes[stream]['enabled'] = enable
       # Activate publish of stream
@@ -348,7 +346,7 @@ class Server:
     return answer
 
   def _request_cv_argorithm(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # parse
     cv_algorithm = msg['algorithm']
     enable = msg['enable']
@@ -356,19 +354,19 @@ class Server:
     # Test from owner
     if not self.from_owner(msg):
       descr = 'Requester ({}) is not the DSS owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Test in controls
     elif self._in_controls != 'APPLICATION':
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Application is not in controls')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Application is not in controls')
     # Test if disabled algorithm is the running task
     elif not enable and self._cam._status_msg == cv_algorithm:
-      answer = dss.auxiliaries.zmq.nack(fcn, 'Cannot disable algorithm not running')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, 'Cannot disable algorithm not running')
     elif cv_algorithm not in self._cam._cv_algorithms:
-      answer = dss.auxiliaries.zmq.nack(fcn, f'Algorithm not supported, {cv_algorithm}')
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, f'Algorithm not supported, {cv_algorithm}')
     # Accept
     else:
       self._cam.cv_algorithm = cv_algorithm
-      answer = dss.auxiliaries.zmq.ack(fcn)
+      answer = dss.auxiliaries.zmq_lib.ack(fcn)
     return answer
 
 
@@ -510,7 +508,7 @@ class Server:
           else:
             # Test request
             answer = request(msg)
-            if dss.auxiliaries.zmq.is_ack(answer):
+            if dss.auxiliaries.zmq_lib.is_ack(answer):
               start_task = True
         else:
           # simple requests are always allowed

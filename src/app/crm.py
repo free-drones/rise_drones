@@ -27,7 +27,7 @@ class CRM:
   def __init__(self, ip: str, port: int, virgin=True):
     self._logger = logging.getLogger('dss.CRM')
 
-    assert dss.auxiliaries.zmq.valid_ip(ip), f'bad ip address: {ip}'
+    assert dss.auxiliaries.zmq_lib.valid_ip(ip), f'bad ip address: {ip}'
 
     self._commands = {'app_lost':            self._request_app_lost,
                       'clients':             self._request_clients,
@@ -54,7 +54,7 @@ class CRM:
 
     self._alive = True
     self._clients = {}
-    self._context = dss.auxiliaries.zmq.Context()
+    self._context = dss.auxiliaries.zmq_lib.Context()
     self._ip = ip
     self._nextIndex = 1
     self._restart = False
@@ -72,8 +72,8 @@ class CRM:
     else:
       self._import_clients()
 
-    self._socket = dss.auxiliaries.zmq.Rep(self._context, port=port, label='crm')
-    self._pub_socket = dss.auxiliaries.zmq.Pub(self._context, port=port+1, label='crm')
+    self._socket = dss.auxiliaries.zmq_lib.Rep(self._context, port=port, label='crm')
+    self._pub_socket = dss.auxiliaries.zmq_lib.Pub(self._context, port=port+1, label='crm')
 
   @property
   def alive(self):
@@ -93,13 +93,13 @@ class CRM:
     ip = self._clients[client_name]['ip']
     port = self._clients[client_name]['port']
 
-    socket = dss.auxiliaries.zmq.Req(self._context, ip=ip, port=port, label=client_name, timeout=2000)
+    socket = dss.auxiliaries.zmq_lib.Req(self._context, ip=ip, port=port, label=client_name, timeout=2000)
 
     for x in range(3):
       self._logger.info(f'task_set_owner, try {x}')
       try:
         answer = socket.send_and_receive({'fcn': 'set_owner', 'id': 'crm', 'owner': new_owner})
-        if dss.auxiliaries.zmq.is_ack(answer):
+        if dss.auxiliaries.zmq_lib.is_ack(answer):
           self._clients[client_name]['owner'] = new_owner
           return
       except dss.auxiliaries.exception.NoAnswer:
@@ -112,10 +112,10 @@ class CRM:
     port = self._clients[client_name]['port']
 
     # RTL only if drone is armed!
-    socket = dss.auxiliaries.zmq.Req(self._context, ip=ip, port=port, label=client_name)
+    socket = dss.auxiliaries.zmq_lib.Req(self._context, ip=ip, port=port, label=client_name)
 
     answer = socket.send_and_receive({'fcn': 'get_armed', 'id': 'crm'})
-    if dss.auxiliaries.zmq.is_ack(answer):
+    if dss.auxiliaries.zmq_lib.is_ack(answer):
       if bool(answer['armed']):
         id_app = '{type}{index:03d}'.format(type='da', index=self._nextIndex)
         self._nextIndex += 1
@@ -128,12 +128,12 @@ class CRM:
     ip = self._clients[client_name]['ip']
     port = self._clients[client_name]['port']
 
-    socket = dss.auxiliaries.zmq.Req(self._context, ip=ip, port=port, label=client_name, timeout=2000)
+    socket = dss.auxiliaries.zmq_lib.Req(self._context, ip=ip, port=port, label=client_name, timeout=2000)
     for x in range(3):
       self._logger.info(f'enable battery stream, try {x}')
       try:
         answer = socket.send_and_receive({'fcn': 'data_stream', 'id': 'crm', 'stream': 'battery', 'enable': True})
-        if dss.auxiliaries.zmq.is_ack(answer):
+        if dss.auxiliaries.zmq_lib.is_ack(answer):
           return
       except dss.auxiliaries.exception.NoAnswer:
         self._logger.warning('NoAnswer sending battery stream')
@@ -161,7 +161,7 @@ class CRM:
 
       msg = json.loads(msg)
 
-      fcn = dss.auxiliaries.zmq.get_fcn(msg)
+      fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
       if fcn in self._commands:
         if 'id' in msg:
           id_ = msg['id']
@@ -173,9 +173,9 @@ class CRM:
           self._export_clients()
         except:
           self._logger.error(f'unexpected exception\n{traceback.format_exc()}')
-          answer = dss.auxiliaries.zmq.nack(fcn, 'unexpected exception')
+          answer = dss.auxiliaries.zmq_lib.nack(fcn, 'unexpected exception')
       else:
-        answer = dss.auxiliaries.zmq.nack(fcn, 'request is not supported')
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, 'request is not supported')
 
       answer = json.dumps(answer)
       self._socket.send_json(answer)
@@ -223,15 +223,15 @@ class CRM:
 
   def _request_app_lost(self, msg: dict) -> dict:
     '''The function app_lost is called by a dss that has lost the link to its app for 5s.'''
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if 'id' not in msg:
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} are mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     # remove owner if not 'crm'
     owner = self._clients[id_]['owner']
@@ -241,60 +241,60 @@ class CRM:
       # send rtl for now!
       self._task_queue.add(self.task_rtl, id_)
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_clients(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'filter']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, filter} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, filter} are mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients and id_ != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     client_list = self._get_clients(msg['filter'])
 
-    return dss.auxiliaries.zmq.ack(fcn, {'clients': client_list})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'clients': client_list})
 
   def _request_delStaleClients(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if 'id' not in msg:
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} are mandatory')
 
     if msg['id'] != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'prohibited')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'prohibited')
 
     clientsToDelete = self.delStaleClients()
-    return dss.auxiliaries.zmq.ack(fcn, {'deleted': clientsToDelete})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'deleted': clientsToDelete})
 
   # Request the ownershop of a drone agent
   def _request_get_drone(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
     if not any(key in msg for key in ['force', 'capabilities']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: either force or capabilities must be used')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: either force or capabilities must be used')
 
     requester_id = msg['id']
     if requester_id not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown requestor id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown requestor id')
 
     if 'force' in msg:
       force = msg['force']
       if force not in self._clients:
-        return dss.auxiliaries.zmq.nack(fcn, 'unknown forced id')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown forced id')
       if self._clients[force]['owner'] != 'crm':
-        return dss.auxiliaries.zmq.nack(fcn, 'forced id not available')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'forced id not available')
       if self._now - self._clients[force]['timestamp'] > 20: #seconds
-        return dss.auxiliaries.zmq.nack(fcn, 'forced id is stale')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'forced id is stale')
       self._task_queue.add(self.task_set_owner, force, requester_id)
-      return dss.auxiliaries.zmq.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
+      return dss.auxiliaries.zmq_lib.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
     else:
       #Get capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
       capabilities = set({capa.casefold(): capa for capa in msg['capabilities']})
@@ -309,36 +309,36 @@ class CRM:
           dss_id = id_
       if drone_found:
         self._task_queue.add(self.task_set_owner, dss_id, requester_id)
-        return dss.auxiliaries.zmq.ack(fcn, {'id': dss_id, 'ip': self._clients[dss_id]['ip'], 'port': self._clients[dss_id]['port']})
+        return dss.auxiliaries.zmq_lib.ack(fcn, {'id': dss_id, 'ip': self._clients[dss_id]['ip'], 'port': self._clients[dss_id]['port']})
 
-    return dss.auxiliaries.zmq.nack(fcn, 'no available drone with requested capabilities')
+    return dss.auxiliaries.zmq_lib.nack(fcn, 'no available drone with requested capabilities')
 
   # Request the ownership of a sensor agent
   def _request_get_sensor(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # Check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
     if not any(key in msg for key in ['force', 'capabilities']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: either force or capabilities must be used')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: either force or capabilities must be used')
 
     # Check that requester is registered
     requester_id = msg['id']
     if requester_id not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown requestor id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown requestor id')
 
     # Client wants a specific sensor
     if 'force' in msg:
       force = msg['force']
       if force not in self._clients:
-        return dss.auxiliaries.zmq.nack(fcn, 'unknown forced id')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown forced id')
       if self._clients[force]['owner'] != 'crm':
-        return dss.auxiliaries.zmq.nack(fcn, 'forced id not available')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'forced id not available')
       if self._now - self._clients[force]['timestamp'] > 20: #seconds
-        return dss.auxiliaries.zmq.nack(fcn, 'forced id is stale')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'forced id is stale')
       self._task_queue.add(self.task_set_owner, force, requester_id)
-      return dss.auxiliaries.zmq.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
+      return dss.auxiliaries.zmq_lib.ack(fcn, {'id': force, 'ip': self._clients[force]['ip'], 'port': self._clients[force]['port']})
     else:
       #Get capabilities as a set for easy comparison. The casefold makes sure that the comparison is not case sensitive
       capabilities = set({capa.casefold(): capa for capa in msg['capabilities']})
@@ -353,35 +353,35 @@ class CRM:
           sen_id = id_
       if sensor_found:
         self._task_queue.add(self.task_set_owner, sen_id, requester_id)
-        return dss.auxiliaries.zmq.ack(fcn, {'id': sen_id, 'ip': self._clients[sen_id]['ip'], 'port': self._clients[sen_id]['port']})
+        return dss.auxiliaries.zmq_lib.ack(fcn, {'id': sen_id, 'ip': self._clients[sen_id]['ip'], 'port': self._clients[sen_id]['port']})
 
-    return dss.auxiliaries.zmq.nack(fcn, 'no available sensor with requested capabilities')
+    return dss.auxiliaries.zmq_lib.nack(fcn, 'no available sensor with requested capabilities')
 
 
   def _request_get_info(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     requester = msg['id']
     if requester not in self._clients and requester != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
-    return dss.auxiliaries.zmq.ack(fcn, {'info_pub_port': self._pub_socket.port, 'data_pub_port': None, 'version': __version__, 'git_version': self._git_version, 'git_branch': self._git_branch})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'info_pub_port': self._pub_socket.port, 'data_pub_port': None, 'version': __version__, 'git_version': self._git_version, 'git_branch': self._git_branch})
 
   def _request_get_processes(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'project']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, project} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, project} is mandatory')
 
     requester = msg['id']
     project = msg["project"]
     if requester not in self._clients and requester != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     #List all processes
     processes = list()
@@ -407,15 +407,15 @@ class CRM:
         processes.append(info)
       except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
         pass
-    msg = dss.auxiliaries.zmq.ack(fcn)
+    msg = dss.auxiliaries.zmq_lib.ack(fcn)
     msg['processes'] = processes
     return msg
 
   def _request_get_performance(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     now = datetime.datetime.now()
     current_time = now.strftime("%H:%M:%S")
@@ -423,54 +423,54 @@ class CRM:
     mem = str(psutil.virtual_memory().percent).zfill(5)
     load = [str(round(x*100)).zfill(3) + '%' for x in os.getloadavg()]
     load = '(' + ', '.join(load) + ')'
-    msg = dss.auxiliaries.zmq.ack(fcn)
+    msg = dss.auxiliaries.zmq_lib.ack(fcn)
     msg['performance'] = f'{cpu}% @ {psutil.cpu_freq().current}MHz x {psutil.cpu_count(logical=True)} {load} - {mem}% of {psutil.virtual_memory().total // 2**20}MB - time {current_time}'
     return msg
 
   def _request_kill_process(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # check arguments
     if not all(key in msg for key in ['id', 'pid']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, pid} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, pid} is mandatory')
     if msg['id'] != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'prohibited')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'prohibited')
     pid = msg["pid"]
     try:
       p = psutil.Process(int(pid))
       p.terminate()
-      msg = dss.auxiliaries.zmq.ack(fcn)
+      msg = dss.auxiliaries.zmq_lib.ack(fcn)
     except (psutil.NoSuchProcess):
-      msg = dss.auxiliaries.zmq.nack(fcn, f'process (pid {pid}) no longer exists')
+      msg = dss.auxiliaries.zmq_lib.nack(fcn, f'process (pid {pid}) no longer exists')
     except:
-      msg = dss.auxiliaries.zmq.nack(fcn, str(traceback.format_exc()))
+      msg = dss.auxiliaries.zmq_lib.nack(fcn, str(traceback.format_exc()))
     return msg
 
 
 
   def _request_heart_beat(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     # send always ack if client is in list
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_launch_app(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'app']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     owner = msg['id']
     if owner not in self._clients and owner != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     if owner == 'root':
       owner = 'crm'
@@ -492,23 +492,23 @@ class CRM:
       crm_connection_string = self._ip + ":" + str(self._socket.port)
       dss.auxiliaries.spawnDaemon.spawnDaemon(f'./{app}', app, f'--app_ip={self._ip}', f'--id={id_app}', f'--crm={crm_connection_string}', f'--owner={owner}', *extra_args)
 
-    return dss.auxiliaries.zmq.ack(fcn, {'id': id_app})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'id': id_app})
 
   def _request_launch_drone_helper(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
-    return dss.auxiliaries.zmq.nack(fcn, 'not implemented')
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
+    return dss.auxiliaries.zmq_lib.nack(fcn, 'not implemented')
 
   # Launch_dss is used by crm to launch crm_dss to a SITL running on the host machine.
   def _request_launch_dss(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'client_ip']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, client_ip} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, client_ip} is mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients and id_ != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     port = self._socket.port
 
@@ -519,18 +519,18 @@ class CRM:
     self._nextIndex += 1
     self._clients[dss_id] = {'name': 'crm_dss.py', 'desc': '', 'type': 'dss', 'owner': 'crm', 'ip': '', 'port': '', 'timestamp': self._now}
     dss.auxiliaries.spawnDaemon.spawnDaemon('./crm_dss.py', 'crm_dss.py', f'--dss_id={dss_id}', f'--crm={self._ip}:{self._socket.port}', f'--drone={self._ip}:{port+88}', f'--dss_ip={self._ip}', '--descr=dss->port 88 [SIM]', '--without-clearance-check', '--without-midstick-check', '--capabilities', 'C0', 'RTK', 'LMD', 'RGB', 'VIDEO', 'SIM')
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_launch_sitl(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'client_ip']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, client_ip} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, client_ip} is mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients and id_ != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     port = self._socket.port
 
@@ -559,20 +559,20 @@ class CRM:
     self._clients[dss_id] = {'name': 'crm_dss.py', 'desc': '', 'type': 'dss', 'owner': 'crm', 'ip': '', 'port': '', 'timestamp': self._now}
     dss.auxiliaries.spawnDaemon.spawnDaemon('./crm_dss.py', 'crm_dss.py', f'--dss_id={dss_id}', f'--crm={self._ip}:{self._socket.port}', f'--drone={self._ip}:{port+86}', f'--dss_ip={self._ip}', '--descr=dss->port 86 [SIM]', '--without-clearance-check', '--without-midstick-check', '--capabilities', 'LMD', 'RTK', 'SIM')
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_register(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['name', 'desc', 'type', 'ip', 'port', 'capabilities']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {name, desc, type, ip, port, capabilities} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {name, desc, type, ip, port, capabilities} are mandatory')
 
-    if not dss.auxiliaries.zmq.valid_ip(msg['ip']):
-      return dss.auxiliaries.zmq.nack(fcn, f'bad ip: {msg["ip"]}')
+    if not dss.auxiliaries.zmq_lib.valid_ip(msg['ip']):
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'bad ip: {msg["ip"]}')
 
     if not isinstance(msg['port'], int) or msg['port'] < 1000:
-      return dss.auxiliaries.zmq.nack(fcn, f'bad port: {msg["port"]}')
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'bad port: {msg["port"]}')
 
     if msg['type'] not in self._types:
       return {'fcn': 'nack', 'call': fcn, 'description': 'unknown client type'}
@@ -580,14 +580,14 @@ class CRM:
     if 'id' in msg and msg['id']:
       id_ = msg['id']
       if id_ not in self._clients:
-        return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
       if self._clients[id_]['ip']:
-        return dss.auxiliaries.zmq.nack(fcn, 'client is already bound to endpoint')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'client is already bound to endpoint')
 
       # double-check the name and type attributes
       if not all(msg[key] == self._clients[id_][key] for key in ['name', 'type']):
-        return dss.auxiliaries.zmq.nack(fcn, 'unexpected name or type')
+        return dss.auxiliaries.zmq_lib.nack(fcn, 'unexpected name or type')
 
       self._clients[id_]['ip'] = msg['ip']
       self._clients[id_]['port'] = msg['port']
@@ -601,7 +601,7 @@ class CRM:
         for client_id, client in self._clients.items():
           if client['ip'] == msg['ip'] and client['type'] == msg['type']:
             if self._now - client['timestamp'] < 20:
-              return dss.auxiliaries.zmq.nack(fcn, 'dss with same ip found')
+              return dss.auxiliaries.zmq_lib.nack(fcn, 'dss with same ip found')
             else:
               self._logger.warning('stale dss with same ip found and replaced')
               self._logger.warning(f'deleting {client_id} {self._clients[client_id]}')
@@ -616,79 +616,79 @@ class CRM:
     if msg['type'] == 'dss':
       self._task_queue.add(self.task_start_battery_stream, id_)
 
-    return dss.auxiliaries.zmq.ack(fcn, {'id': id_})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'id': id_})
 
   # Client wants to return the ownership of a drone
   def _request_release_drone(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'id_released']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, id_released} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, id_released} are mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id: {id}')
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'unknown client id: {id}')
 
     id_released = msg['id_released']
     if id_released not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id (id_released): {id_released}')
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'unknown client id (id_released): {id_released}')
 
     self._task_queue.add(self.task_set_owner, id_released, 'crm')
 
     # send rtl for now!
     self._task_queue.add(self.task_rtl, id_released)
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   # Client wants to retrn the ownership of a sensor
   def _request_release_sensor(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'id_released']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, id_released} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, id_released} are mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id: {id}')
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'unknown client id: {id}')
 
     id_released = msg['id_released']
     if id_released not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, f'unknown client id (id_released): {id_released}')
+      return dss.auxiliaries.zmq_lib.nack(fcn, f'unknown client id (id_released): {id_released}')
 
     self._task_queue.add(self.task_set_owner, id_released, 'crm')
 
     # Stop data collection?
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_restart(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if 'id' not in msg:
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} are mandatory')
 
     if msg['id'] != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'prohibited')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'prohibited')
 
     self._restart = True
     self._upgrade = False
     self._virgin = msg['virgin']
     self.kill()
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_unregister(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if 'id' not in msg:
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ not in self._clients:
-      return dss.auxiliaries.zmq.nack(fcn, 'unknown client id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'unknown client id')
 
     for client_id, client in self._clients.items():
       if client['owner'] == id_ and client['type'] == 'dss':
@@ -698,23 +698,23 @@ class CRM:
     del self._clients[id_]
     client_list = self._get_clients()
     self._pub_socket.publish('clients', client_list)
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
   def _request_upgrade(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if 'id' not in msg:
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} are mandatory')
 
     if msg['id'] != 'root':
-      return dss.auxiliaries.zmq.nack(fcn, 'prohibited')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'prohibited')
 
     self._restart = True
     self._upgrade = True
     self._virgin = msg['virgin']
     self.kill()
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
 #--------------------------------------------------------------------#
 
@@ -729,7 +729,7 @@ def _main():
   parser.add_argument('--virgin', action='store_true', help='defines if to start from a backup or not')
   args = parser.parse_args()
 
-  subnet = dss.auxiliaries.zmq.get_subnet(port=args.port)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=args.port)
   dss.auxiliaries.logging.configure('crm.log', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   crm = CRM(args.ip, args.port, virgin=args.virgin)

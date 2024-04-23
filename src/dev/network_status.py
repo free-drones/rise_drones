@@ -5,12 +5,8 @@ import argparse
 import time
 import traceback
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
-from dss.auxiliaries.modem import Modem
+import dss.auxiliaries
+import dss.auxiliaries.modem
 
 
 #--------------------------------------------------------------------#
@@ -79,7 +75,7 @@ def _main():
   # Create the Modem class
 
   try:
-    modem = Modem(args.tty)
+    modem = dss.auxiliaries.modem.Modem(args.tty)
     main(modem)
   except:
     print("Something bad happened")

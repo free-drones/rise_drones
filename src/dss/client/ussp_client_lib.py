@@ -8,7 +8,6 @@ import string
 
 import dss.auxiliaries
 
-import dss.client
 import numpy as np
 
 __author__ = 'Lennart Ochel <>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
@@ -38,7 +37,7 @@ class UsspClientLib:
     self._logger = logging.getLogger(__name__)
     self._logger.info('U-space Client Lib')
 
-    self._context = context if context else dss.auxiliaries.zmq.Context()
+    self._context = context if context else dss.auxiliaries.zmq_lib.Context()
     self._ussp_client = None
     self._app_id = app_id
     self._nrid_msgs = {}

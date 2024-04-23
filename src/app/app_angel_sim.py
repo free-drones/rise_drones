@@ -28,7 +28,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_angel_sim')
-_context = dss.auxiliaries.zmq.Context()
+_context = dss.auxiliaries.zmq_lib.Context()
 
 #--------------------------------------------------------------------#
 # App mission - README.
@@ -74,9 +74,9 @@ class AppAngelSim():
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -117,7 +117,7 @@ class AppAngelSim():
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
@@ -144,7 +144,7 @@ class AppAngelSim():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else:
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -155,13 +155,13 @@ class AppAngelSim():
 #--------------------------------------------------------------------#
 # Application reply: 'push_dss'
   def _request_push_dss(self, msg):
-    answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Not implemented')
+    answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Not implemented')
     return answer
 
 #--------------------------------------------------------------------#
 # Application reply: 'get_info'
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
@@ -186,7 +186,7 @@ class AppAngelSim():
     # Enable waypoint subscription
     #self.drone.enable_data_stream('currentWP')
     # Create info socket and start listening thread
-    info_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "info " + self.crm.app_id)
+    info_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "info " + self.crm.app_id)
     while self._dss_info_thread_active:
       try:
         (topic, msg) = info_socket.recv()
@@ -211,7 +211,7 @@ class AppAngelSim():
       if skara_id in answer['clients']:
         client = answer['clients'][skara_id]
         if client['ip'] and client['port']:
-          self._app_skara_socket = dss.auxiliaries.zmq.Req(_context, client['ip'], client['port'], label='app-skara-req', timeout=2000)
+          self._app_skara_socket = dss.auxiliaries.zmq_lib.Req(_context, client['ip'], client['port'], label='app-skara-req', timeout=2000)
           self._app_skara_socket.start_heartbeat(self.crm.app_id)
           app_skara_found = True
       if not app_skara_found:
@@ -225,8 +225,8 @@ class AppAngelSim():
     msg = {'fcn': call, 'id': self.crm.app_id, 'enable': enable, 'target_id': dss_id, 'capabilities': ['SPOTLIGHT', 'SIM']}
     answer = self._app_skara_socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     # return
     #
     return
@@ -235,15 +235,15 @@ class AppAngelSim():
   def main(self, mission):
     #Launch app skara
     answer = self.crm.launch_app('app_skara.py')
-    if dss.auxiliaries.zmq.is_nack(answer):
+    if dss.auxiliaries.zmq_lib.is_nack(answer):
       _logger.error('Unable to launch app_skara')
     # Setup connection to app_skara
     self.setup_app_skara_socket(answer['id'])
     # Get a drone with the right capabilities
     answer = self.crm.get_drone(capabilities=self.drone_capabilities)
 
-    if dss.auxiliaries.zmq.is_nack(answer):
-      _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq.get_nack_reason(answer))
+    if dss.auxiliaries.zmq_lib.is_nack(answer):
+      _logger.error('Did not receive a drone: %s', dss.auxiliaries.zmq_lib.get_nack_reason(answer))
       return
 
     # Connect to the drone, set app_id in socket
@@ -333,7 +333,7 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=args.app_ip)
   # Initiate log file
   dss.auxiliaries.logging.configure('app_angel_sim', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
   # Create the PhotoMission class

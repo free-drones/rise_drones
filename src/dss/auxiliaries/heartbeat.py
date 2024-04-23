@@ -15,7 +15,12 @@ import socket
 import threading
 import time
 
-import zmq
+import dss.auxiliaries
+
+
+## Socket operation commented out. Update to use dss.auxiliaries.zmq_lib
+
+
 
 __author__ = 'Lennart Ochel <>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
@@ -80,12 +85,13 @@ class Server(_Instance):
 
     self._interval = interval
     self._socket_str = address
-    self._context = zmq.Context() if context is None else context
-    self._socket = self._context.socket(zmq.PUB)
+    self._context = dss.auxiliaries.zmq_lib.Context() if context is None else context
+    #self._pub_socket = dss.auxiliaries.zmq_lib.Pub(self._context, port=None, min_port=crm_port+1, max_port=crm_port+50, label='info')
+    #self._socket = self._context.socket(zmq_lib.PUB)
 
   def _start(self):
     '''Start the heartbeat server'''
-    self._socket.bind(self._socket_str)
+    #self._socket.bind(self._socket_str)
     self._logger.info('Starting heartbeat server on %s... done', self._socket_str)
     self._logger.info('Server address: %s', _get_ip_address())
     return True
@@ -96,7 +102,7 @@ class Server(_Instance):
     while self.alive:
       message = f'{topic} {self._interval}'
       self._logger.debug(message)
-      self._socket.send_string(message)
+      #self._socket.send_string(message)
       time.sleep(self._interval)
 
 class Client(_Instance):
@@ -108,8 +114,8 @@ class Client(_Instance):
 
     self._attempts = attempts
     self._socket_str = address
-    self._context = zmq.Context() if context is None else context
-    self._socket = self._context.socket(zmq.SUB)
+    #self._context = zmq_lib.Context() if context is None else context
+    #self._socket = self._context.socket(zmq_lib.SUB)
     self._vital = False
 
   @property
@@ -124,11 +130,11 @@ class Client(_Instance):
 
   def _start(self):
     '''Start the heartbeat client'''
-    self._socket.connect(self._socket_str)
+    #self._socket.connect(self._socket_str)
     self._logger.info('Starting heartbeat client on %s... done', self._socket_str)
 
-    self._socket.setsockopt_string(zmq.SUBSCRIBE, 'heartbeat')
-    self._socket.RCVTIMEO = 1000 # in milliseconds
+    #self._socket.setsockopt_string(zmq_lib.SUBSCRIBE, 'heartbeat')
+    #self._socket.RCVTIMEO = 1000 # in milliseconds
 
     return True
 
@@ -137,8 +143,9 @@ class Client(_Instance):
     attempts = self._attempts
     while self.alive:
       try:
-        message = str(self._socket.recv(), 'utf-8')
-      except zmq.error.Again:
+        message = "Just a dummy string to have something to try.."
+        #message = str(self._socket.recv(), 'utf-8')
+      except: #zmq_lib.error.Again:
         if self._vital:
           if attempts > 0:
             attempts = attempts-1
@@ -154,5 +161,5 @@ class Client(_Instance):
           self._logger.info('Connecting to heartbeat server... done')
           self._interval = float(message.split()[-1])
           self._logger.info('interval: %g', self._interval)
-          self._socket.RCVTIMEO = int(self._interval*1000) # in milliseconds
+          #self._socket.RCVTIMEO = int(self._interval*1000) # in milliseconds
         attempts = self._attempts

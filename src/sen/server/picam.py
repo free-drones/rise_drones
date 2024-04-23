@@ -7,7 +7,7 @@ import logging
 import json
 
 import dss.auxiliaries
-from dss.auxiliaries.config import config, config_path
+from dss.auxiliaries.config import config
 
 class PiCam():
 
@@ -30,7 +30,7 @@ class PiCam():
     # Demonstration of config data
     try:
       calibration = config['SensorCalibration']
-      print(f'printing congfigdata from file found at: {config_path}')
+      print(f'printing congfigdata from file found at: {config["config_path"]}')
       print(json.dumps(calibration, indent = 4))
       self.logger.info(f'Calibration data: {calibration}')
     except:

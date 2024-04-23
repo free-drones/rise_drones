@@ -38,7 +38,7 @@ def _main():
   # Split drone connection string
   (_, drone_port) = args.drone.split(':')
   drone_port = int(drone_port)
-  subnet = dss.auxiliaries.zmq.get_subnet(port=drone_port)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=drone_port)
   dss.auxiliaries.logging.configure(f'{args.dss_id}.log', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   # start dss

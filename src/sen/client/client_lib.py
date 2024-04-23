@@ -16,6 +16,7 @@ import time
 import dss.auxiliaries
 import sen.client
 
+
 __author__ = 'Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
 __copyright__ = 'Copyright (c) 2019-2021, RISE'
@@ -35,7 +36,7 @@ class Client:
     self._app_id = 'da000'
 
     self._alive = False
-    self._context = context if context else dss.auxiliaries.zmq.zmq.Context()
+    self._context = context if context else dss.auxiliaries.zmq_lib.Context()
     self._sen = None
     self._exception_handler = exception_handler
     self._input_handler = None
@@ -91,7 +92,7 @@ class Client:
       raise dss.auxiliaries.exception.Error('An asynchronous input handler is already defined')
 
     self._input_handler = input_handler
-    self._input_socket = dss.auxiliaries.zmq.Rep(self._context, '*', port, label='input-rep', timeout=self._timeout)
+    self._input_socket = dss.auxiliaries.zmq_lib.Rep(self._context, '*', port, label='input-rep', timeout=self._timeout)
     self._logger.info(f"Starting input server on port {port}")
 
   def raise_if_aborted(self, app_allowed=True):
@@ -140,7 +141,7 @@ class Client:
       logging.error("Convert your code to send app_id upon connect")
 
     # Connect to SEN
-    self._sen = sen.client.SEN(self._context, self._app_id, ip, port, None, timeout=self._timeout)
+    self._sen = sen.client.sen_api.SEN(self._context, self._app_id, ip, port, None, timeout=self._timeout)
     self._alive = True
 
     # Test connection, owner change must have gone through to get ack. Takes some time sometimes
@@ -179,7 +180,7 @@ class Client:
     self._app_id = app_id
 
     # Connect to DSS
-    self._sen = sen.client.SEN(self._context, self._app_id, ip, port, None, timeout=self._timeout)
+    self._sen = sen.client.sen_api.SEN(self._context, self._app_id, ip, port, None, timeout=self._timeout)
     self._alive = True
 
     # SEN class will update sen_id to connected sen when get_info runs.

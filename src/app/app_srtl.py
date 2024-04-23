@@ -31,7 +31,7 @@ class AppClient:
     self._app_ip = crm_ip # HACK? APP is running on the same system as CRM
 
     self._alive = True
-    self._context = dss.auxiliaries.zmq.Context()
+    self._context = dss.auxiliaries.zmq_lib.Context()
 
     # all sockets
     self._app_socket = None #Rep: ANY -> APP
@@ -49,16 +49,16 @@ class AppClient:
 
 #----                                                            ----#
   def main(self):
-    self._crm_socket = dss.auxiliaries.zmq.Req(self._context, self._crm_ip, self._crm_port, label='crm')
+    self._crm_socket = dss.auxiliaries.zmq_lib.Req(self._context, self._crm_ip, self._crm_port, label='crm')
     self._crm_socket.start_heartbeat(self._app_id)
-    self._app_socket = dss.auxiliaries.zmq.Rep(self._context, label=f'app {self._app_id}')
-    self._info_socket = dss.auxiliaries.zmq.Pub(self._context, label=f'info {self._app_id}')
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(self._context, label=f'app {self._app_id}')
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(self._context, label=f'info {self._app_id}')
 
     _logger.info('App {app_id} is listening on {ip}:{port}'.format(app_id=self._app_id, ip=self._app_socket.ip, port=self._app_socket.port))
 
     # register APP
     answer = self._crm_socket.send_and_receive({'fcn': 'register', 'name': 'SRTL', 'desc': 'app_srtl', 'type': 'da', 'id': self._app_id, 'ip': self._app_ip, 'port': self._app_socket.port})
-    if dss.auxiliaries.zmq.is_ack(answer):
+    if dss.auxiliaries.zmq_lib.is_ack(answer):
       # predefined mission
       self._task_queue.add(self.task_getDrone)
       self._task_queue.add(self.task_srtl)
@@ -76,22 +76,22 @@ class AppClient:
 
       msg = json.loads(msg)
 
-      fcn = dss.auxiliaries.zmq.get_fcn(msg)
+      fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
       if fcn in self._commands:
         try:
           answer = self._commands[fcn](msg)
         except:
           _logger.error(f'unexpected exception\n{traceback.format_exc()}')
-          answer = dss.auxiliaries.zmq.nack(fcn, 'unexpected exception')
+          answer = dss.auxiliaries.zmq_lib.nack(fcn, 'unexpected exception')
       else:
-        answer = dss.auxiliaries.zmq.nack(fcn, 'request is not supported')
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, 'request is not supported')
 
       answer = json.dumps(answer)
       self._app_socket.send_json(answer)
 
     # unregister APP from CRM
     answer = self._crm_socket.send_and_receive({'fcn': 'unregister', 'id': self._app_id})
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error(f'unregister failed: {answer}')
 
     # stop task queue
@@ -117,16 +117,16 @@ class AppClient:
     state.'''
     call = 'get_armed'
     answer = self._dss_socket.send_and_receive({'fcn': call, 'id': self._app_id})
-    if not dss.auxiliaries.zmq.is_ack(answer):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     return bool(answer['armed'])
 
 #----                                                            ----#
   def is_idling(self):
     call = 'get_idle'
     answer = self._dss_socket.send_and_receive({'fcn': call, 'id': self._app_id})
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      #raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      #raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
       return False
     return answer['idle']
 
@@ -138,7 +138,7 @@ class AppClient:
     answer = self._dss_socket.send_and_receive({'fcn': 'photo', 'id': self._app_id, 'cmd': 'continous_photo', 'enable': False, 'publish': 'low', 'period': 0.0})
 
     answer = self._dss_socket.send_and_receive({'fcn': 'dss_srtl', 'id': self._app_id, 'hover_time': 5})
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error(f'dss_srtl failed: {answer}')
       self._alive = False
 
@@ -153,11 +153,11 @@ class AppClient:
       return
 
     answer = self._crm_socket.send_and_receive({'fcn': 'get_drone', 'id': self._app_id, 'force': self._dss_id})
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error(f'get_drone failed: {answer}')
       self._alive = False
     else:
-      self._dss_socket = dss.auxiliaries.zmq.Req(self._context, answer['ip'], answer['port'], label=f'dss {self._dss_id}')
+      self._dss_socket = dss.auxiliaries.zmq_lib.Req(self._context, answer['ip'], answer['port'], label=f'dss {self._dss_id}')
       self._dss_socket.start_heartbeat(self._app_id)
       self._info_socket.publish('clients', {'clients': [self._dss_id]})
 
@@ -167,7 +167,7 @@ class AppClient:
       return
 
     answer = self._crm_socket.send_and_receive({'fcn': 'release_drone', 'id': self._app_id, 'id_released': self._dss_id})
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error(f'release_drone failed: {answer}')
       self._alive = False
 
@@ -182,31 +182,31 @@ class AppClient:
 
 #---- ANYONE TO APP -------------------------------------------------#
   def _request_heart_beat(self, msg:dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ != self._app_id:
-      return dss.auxiliaries.zmq.nack(fcn, 'wrong id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'wrong id')
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
 #----                                                            ----#
   def _request_ping(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ != self._app_id:
-      return dss.auxiliaries.zmq.nack(fcn, 'wrong id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'wrong id')
 
-    return dss.auxiliaries.zmq.ack(fcn, {'id': self._app_id, 'info_pub_port': self._info_socket.port})
+    return dss.auxiliaries.zmq_lib.ack(fcn, {'id': self._app_id, 'info_pub_port': self._info_socket.port})
 
 
 #--------------------------------------------------------------------#
@@ -222,7 +222,7 @@ def _main():
   parser.add_argument('--stdout', action='store_true', help='enables logging to stdout')
   args = parser.parse_args()
 
-  subnet = dss.auxiliaries.zmq.get_subnet(port=args.port)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=args.port)
   dss.auxiliaries.logging.configure(f'{args.id}_app_srtl', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   client = AppClient(args.id, args.ip, args.port, args.dss)

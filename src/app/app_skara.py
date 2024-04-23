@@ -8,6 +8,7 @@ This app is used to follow a cyclist. It can be configured to use one or two dro
 
 import argparse
 from distutils.log import info
+
 import json
 import logging
 import sys
@@ -18,7 +19,7 @@ import copy
 import queue
 
 import dss.auxiliaries
-import dss.client
+#import dss.client
 import dss.auxiliaries.config
 
 #--------------------------------------------------------------------#
@@ -31,7 +32,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_skara')
-_context = dss.auxiliaries.zmq.Context()
+_context = dss.auxiliaries.zmq_lib.Context()
 
 #--------------------------------------------------------------------#
 # App skara- README.
@@ -65,9 +66,9 @@ class AppSkara():
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._last_msg_received = time.time()
@@ -101,8 +102,8 @@ class AppSkara():
     self._follow_her_enabled = False
 
     #Compute the heading reference for the cyclist in "Leaving" state
-    self.road_heading = dss.auxiliaries.math.compute_bearing(self.road['id0'], self.road['id1'])
-    self.road_length = dss.auxiliaries.math.distance_2D(self.road['id0'], self.road['id1'])
+    self.road_heading = dss.auxiliaries.math_lib.compute_bearing(self.road['id0'], self.road['id1'])
+    self.road_length = dss.auxiliaries.math_lib.distance_2D(self.road['id0'], self.road['id1'])
     self.cyclist_point = Point(self.road_heading, self.road_length)
     _logger.info(f'Ref road heading: {self.road_heading}, ref road length: {self.road_length}')
 
@@ -129,7 +130,7 @@ class AppSkara():
     for role in self.roles:
       self.drones[role] = dss.client.Client(timeout=2000, exception_handler=None, context=_context)
       self.spotlight_enabled[role] = False
-      self.lla_publishers[role] = dss.auxiliaries.zmq.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
+      self.lla_publishers[role] = dss.auxiliaries.zmq_lib.Pub(_context, label='LLA-'+role, min_port=self.crm.port, max_port=self.crm.port+50)
       #Setup a "modified" LLA-stream thread based on the role of the drone
       self.lla_publishers_timing[role] = time.time()
       self.lla_threads[role] = threading.Thread(target=self._her_lla_publisher, args=(role,))
@@ -197,7 +198,7 @@ class AppSkara():
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
@@ -295,8 +296,8 @@ class AppSkara():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else:
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
-        is_ack = dss.auxiliaries.zmq.is_ack(answer)
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
+        is_ack = dss.auxiliaries.zmq_lib.is_ack(answer)
         if is_ack and self._commands[fcn]['task'] is not None:
           self._task_msg = msg
           self._task_event.set()
@@ -309,15 +310,15 @@ class AppSkara():
     self._app_socket.close()
     _logger.info("Reply socket closed, thread exit")
 
-  def _get_info_port(self, req_socket: dss.auxiliaries.zmq.Req):
+  def _get_info_port(self, req_socket: dss.auxiliaries.zmq_lib.Req):
     call = 'get_info'
     # build message
     msg = {'fcn': call, 'id': self.app_id}
     # send and receive message
     answer = req_socket.send_and_receive(msg)
     # handle nack
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     if not 'info_pub_port' in answer:
       raise dss.auxiliaries.exception.Error('info pub port not provided')
     return answer['info_pub_port']
@@ -330,9 +331,9 @@ class AppSkara():
       info_pub_port = drone.get_port('info_pub_port')
     else:
       #Request socket to another application (assumed LLA stream already started)
-      req_socket = dss.auxiliaries.zmq.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
+      req_socket = dss.auxiliaries.zmq_lib.Req(_context, self.her['ip'], self.her['port'], label='her-req', timeout=2000)
       info_pub_port = self._get_info_port(req_socket)
-    self._her_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, self.her['ip'], info_pub_port, "her-info")
+    self._her_lla_subscriber = dss.auxiliaries.zmq_lib.Sub(_context, self.her['ip'], info_pub_port, "her-info")
 
   def _above_drone_lla_listener(self):
     while self.alive:
@@ -378,12 +379,12 @@ class AppSkara():
           direction = 1
           if self.cyclist_point.state == "Returning":
             direction = -1
-          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, direction, self.ahead_distance)
+          modified_msg = dss.auxiliaries.math_lib.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, direction, self.ahead_distance)
         else:
           #Above drone should only project to line (distance = 0)
-          modified_msg = dss.auxiliaries.math.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
+          modified_msg = dss.auxiliaries.math_lib.compute_lookahead_lla_reference(self.road['id0'], self.road['id1'], her_lla, dir=1, distance=0)
           # Calc dist to home and monitor cyclist speed relative to home, trigger switch if conditions are met
-          dist_home = dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg)
+          dist_home = dss.auxiliaries.math_lib.distance_2D(self.road['id0'], modified_msg)
           self.cyclist_point.new_measurement(time.time(), dist_home)
           switched = self.cyclist_point.switched_direction(dist_home)
           if switched:
@@ -398,7 +399,7 @@ class AppSkara():
         modified_msg["alt"] = dss.auxiliaries.config.config["app_skara"]["ground_altitude"]+alt_diff
         self.lla_publishers[role].publish(topic, modified_msg)
         #Enable/disable spotlight?
-        if dss.auxiliaries.math.distance_2D(self.road['id0'], modified_msg) < self.spotlight_switch_distance:
+        if dss.auxiliaries.math_lib.distance_2D(self.road['id0'], modified_msg) < self.spotlight_switch_distance:
           if self.spotlight_enabled[role]:
             self.background_task_queue.put(f'{role} spotlight disable')
         else:
@@ -410,17 +411,17 @@ class AppSkara():
 #--------------------------------------------------------------------#
 # Application reply: 'follow_her'
   def _request_follow_her(self, msg):
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
     # Check nack reasons
     if not self.from_owner(msg) and msg['id'] != "GUI":
       descr = 'Requester ({}) is not the APP owner'.format(msg['id'])
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     elif not 'target_id' in msg:
       descr = 'missing target id'
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     elif msg['enable'] and self._follow_her_enabled:
       descr = 'follow her already enabled'
-      answer = dss.auxiliaries.zmq.nack(fcn, descr)
+      answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     # Accept if target id in list from CRM
     else:
       answer = self.crm.clients(filter=msg['target_id'])
@@ -428,23 +429,23 @@ class AppSkara():
         self.her_id = msg['target_id']
         self.her = answer['clients'][self.her_id]
         self._follow_her_enabled = msg['enable']
-        answer = dss.auxiliaries.zmq.ack(fcn)
+        answer = dss.auxiliaries.zmq_lib.ack(fcn)
       else:
         descr = 'target id not found'
-        answer = dss.auxiliaries.zmq.nack(fcn, descr)
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, descr)
     return answer
 
 #--------------------------------------------------------------------#
 # Application reply: 'get_info'
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
     return answer
 
   def _request_heart_beat(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     return answer
 
   # Task follow her
@@ -485,7 +486,7 @@ class AppSkara():
       while not drone_received:
         self.check_if_cancelled('drone allocation')
         answer = self.crm.get_drone(capabilities=capabilities)
-        if not dss.auxiliaries.zmq.is_ack(answer):
+        if not dss.auxiliaries.zmq_lib.is_ack(answer):
           _logger.warning('No drone with correct capabilities available.. Sleeping for 2 seconds')
           time.sleep(2.0)
         else:
@@ -495,7 +496,7 @@ class AppSkara():
       if role == "Above":
         info_port = drone.get_port('info_pub_port')
         drone.enable_data_stream('LLA')
-        self._above_drone_lla_subscriber = dss.auxiliaries.zmq.Sub(_context, answer['ip'], info_port, "info above")
+        self._above_drone_lla_subscriber = dss.auxiliaries.zmq_lib.Sub(_context, answer['ip'], info_port, "info above")
 
   def release_drones(self):
     #Disconnect the drones
@@ -658,7 +659,7 @@ def _main():
 
   # Identify subnet to sort log files in structure
   crm_ip_port = args.crm.split(':')
-  subnet = dss.auxiliaries.zmq.get_subnet(port=int(crm_ip_port[1]))
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=int(crm_ip_port[1]))
   # Initiate log file
   dss.auxiliaries.logging.configure('app_skara', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 

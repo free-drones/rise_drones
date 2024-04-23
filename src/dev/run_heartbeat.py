@@ -15,11 +15,6 @@ import argparse
 import logging
 import time
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
 
 __author__ = 'Lennart Ochel <lennart.ochel@ri.se>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'

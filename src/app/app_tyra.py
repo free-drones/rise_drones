@@ -99,13 +99,13 @@ class Drone:
 
     # Connect to DSS
     dss_address = f'tcp://{ip}:{port}'
-    self._dss_socket = dss.auxiliaries.zmq.Req(self._context, ip, port, label=name, timeout=3000)
+    self._dss_socket = dss.auxiliaries.zmq_lib.Req(self._context, ip, port, label=name, timeout=3000)
 
     # Test connection, owner change must have gone through to get ack. Takes some time sometimes
     max_attempt = 4
     for attempt in range(max_attempt):
       answer = self._dss_socket.send_and_receive({'fcn': 'heart_beat', 'id': self.app_id})
-      if dss.auxiliaries.zmq.is_ack(answer, 'heart_beat'):
+      if dss.auxiliaries.zmq_lib.is_ack(answer, 'heart_beat'):
         # Correctly connected
         break
       # Give up if no success after maximum number of attempts
@@ -138,7 +138,7 @@ class Drone:
     call = 'get_info'
     msg = {'fcn': call, 'id': self.app_id}
     answer = self._dss_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       return False
     return int(answer[port_label])
 
@@ -149,7 +149,7 @@ class Drone:
     assert mode in ('APPLICATION', 'DSS', 'PILOT'), f'invalid argument: {mode}'
     msg = {'fcn': call, 'id': self.app_id}
     answer = self._dss_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       return False
     return answer['in_controls'] == mode
 
@@ -169,8 +169,8 @@ class Drone:
     call = 'get_posD'
     msg = {'fcn': call, 'id': self.app_id}
     answer = self._dss_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), fcn=call)
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), fcn=call)
     return -float(answer['posD'])
 
 #--------------------------------------------------------------------#
@@ -188,7 +188,7 @@ class Drone:
     call = 'arm_take_off'
     msg = {'fcn': call, 'id': self.app_id, 'height': height}
     answer = self._dss_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       _logger.error('nack: arm_take_off (height=%d)', height)
       self.release()
       return
@@ -289,7 +289,7 @@ class Drone:
 #--------------------------------------------------------------------#
   # Main info from dss, thread
   def _main_info_dss(self, ip, port):
-    _info_socket = dss.auxiliaries.zmq.Sub(self._context, ip, port, 'info ' + self.name)
+    _info_socket = dss.auxiliaries.zmq_lib.Sub(self._context, ip, port, 'info ' + self.name)
     _info_socket.subscribe('battery')
     _info_socket.subscribe('LLA')
 
@@ -342,7 +342,7 @@ class TYRApp:
     self._app_ip = app_ip
 
     self._alive = True
-    self._context = dss.auxiliaries.zmq.Context()
+    self._context = dss.auxiliaries.zmq_lib.Context()
 
     # all sockets
     self._app_socket = None # Rep: ANY -> APP
@@ -438,7 +438,7 @@ class TYRApp:
     if self._drone1.connected():
       if self._drone1._battery_low and not self._drone2.connected():
         answer = self._crm_socket.send_and_receive({'fcn': 'get_drone', 'id': self._app_id, 'capabilities': self.capabilities})
-        if dss.auxiliaries.zmq.is_ack(answer):
+        if dss.auxiliaries.zmq_lib.is_ack(answer):
           self._task_queue.add(self.task_getDrone, answer['id'], answer['ip'], answer['port'])
         else:
           _logger.error("Failed to get replacement drone!")
@@ -454,7 +454,7 @@ class TYRApp:
       self._drone1.release()
       answer = self._crm_socket.send_and_receive({'fcn': 'release_drone', 'id': self._app_id, 'id_released': drone1_name})
       self.publish_clients()
-      if not dss.auxiliaries.zmq.is_ack(answer):
+      if not dss.auxiliaries.zmq_lib.is_ack(answer):
         desc = answer['description'] if 'description' in answer else 'no description'
         _logger.error(f'get_drone failed: {desc}')
     if self._drone2.connected():
@@ -463,7 +463,7 @@ class TYRApp:
       self._drone2.release()
       answer = self._crm_socket.send_and_receive({'fcn': 'release_drone', 'id': self._app_id, 'id_released': drone2_name})
       self.publish_clients()
-      if not dss.auxiliaries.zmq.is_ack(answer):
+      if not dss.auxiliaries.zmq_lib.is_ack(answer):
         desc = answer['description'] if 'description' in answer else 'no description'
         _logger.error(f'get_drone failed: {desc}')
     if self._info_thread:
@@ -477,7 +477,7 @@ class TYRApp:
     call = 'clients'
     msg = {'fcn': call, 'id': self._app_id, 'filter': self._tyramote_id}
     answer = self._crm_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       _logger.error(f'clients failed')
       self.kill()
       return
@@ -492,14 +492,14 @@ class TYRApp:
     # Update ip and port info, then connect to TYRAmote
     self._tyramote_ip = client['ip']
     self._tyramote_port = client['port']
-    self._tyramote_socket = dss.auxiliaries.zmq.Req(self._context, ip=self._tyramote_ip, port=self._tyramote_port, label='Tyramote req socket', self_id=self._app_id)
+    self._tyramote_socket = dss.auxiliaries.zmq_lib.Req(self._context, ip=self._tyramote_ip, port=self._tyramote_port, label='Tyramote req socket', self_id=self._app_id)
     self._tyramote_socket.connect()
 
     # Get publish port from tyramote
     call = 'get_info'
     msg = {'fcn': call, 'id': self._app_id}
     answer = self._tyramote_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       _logger.error(f'TYRAmote get info failed')
       self.kill()
       return
@@ -508,7 +508,7 @@ class TYRApp:
 #----                                                            ----#
   # Subscribe to LLA stream from TYRAmote, thread
   def _main_info_tyramote(self, ip, port):
-    info_tyramote = dss.auxiliaries.zmq.Sub(self._context, ip, port, 'info ' + self._tyramote_id)
+    info_tyramote = dss.auxiliaries.zmq_lib.Sub(self._context, ip, port, 'info ' + self._tyramote_id)
     info_tyramote.subscribe('LLA')
 
     while self._alive:
@@ -526,10 +526,10 @@ class TYRApp:
 #----                                                            ----#
   # Main
   def main(self):
-    self._crm_socket = dss.auxiliaries.zmq.Req(self._context, self._crm_ip, self._crm_port, label='crm', timeout=10000)
+    self._crm_socket = dss.auxiliaries.zmq_lib.Req(self._context, self._crm_ip, self._crm_port, label='crm', timeout=10000)
     self._crm_socket.start_heartbeat(self._app_id)
-    self._app_socket = dss.auxiliaries.zmq.Rep(self._context, label=f'app {self._app_id}', min_port=self._crm_port+1, max_port=self._crm_port+50)
-    self._info_socket = dss.auxiliaries.zmq.Pub(self._context, label=f'info {self._app_id}', min_port=self._crm_port+1, max_port=self._crm_port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(self._context, label=f'app {self._app_id}', min_port=self._crm_port+1, max_port=self._crm_port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(self._context, label=f'info {self._app_id}', min_port=self._crm_port+1, max_port=self._crm_port+50)
 
     _logger.info('App {app_id} is listening on {ip}:{port}'.format(app_id=self._app_id, ip=self._app_socket.ip, port=self._app_socket.port))
 
@@ -541,7 +541,7 @@ class TYRApp:
     msg['port'] = self._app_socket.port
     msg['capabilities'] = []
     answer = self._crm_socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer, call):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer, call):
       _logger.error(f'register failed: {answer}')
       self.kill()
 
@@ -566,23 +566,23 @@ class TYRApp:
 
       msg = json.loads(msg)
 
-      fcn = dss.auxiliaries.zmq.get_fcn(msg)
+      fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
       if fcn in self._commands:
         try:
           with self._mutex:
             answer = self._commands[fcn](msg)
         except:
           _logger.error(f'unexpected exception\n{traceback.format_exc()}')
-          answer = dss.auxiliaries.zmq.nack(fcn, 'unexpected exception')
+          answer = dss.auxiliaries.zmq_lib.nack(fcn, 'unexpected exception')
       else:
-        answer = dss.auxiliaries.zmq.nack(fcn, 'request is not supported')
+        answer = dss.auxiliaries.zmq_lib.nack(fcn, 'request is not supported')
 
       answer = json.dumps(answer)
       self._app_socket.send_json(answer)
 
     # unregister APP from CRM
     answer = self._crm_socket.send_and_receive({'fcn': 'unregister', 'id': self._app_id})
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error(f'unregister failed: {answer}')
 
     # stop task queue
@@ -600,42 +600,42 @@ class TYRApp:
 #----                                                            ----#
   # Request follow me
   def _request_follow_me(self, msg:dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'enable', 'capabilities']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, enable, capabilities} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, enable, capabilities} are mandatory')
 
     if msg['enable']:
       if self._drone1.connected():
-        return dss.auxiliaries.zmq.nack(fcn, f'already connected to {self._drone1.name}')
+        return dss.auxiliaries.zmq_lib.nack(fcn, f'already connected to {self._drone1.name}')
 
       self.capabilities = msg['capabilities']
       answer = self._crm_socket.send_and_receive({'fcn': 'get_drone', 'id': self._app_id, 'capabilities': self.capabilities})
-      if not dss.auxiliaries.zmq.is_ack(answer):
+      if not dss.auxiliaries.zmq_lib.is_ack(answer):
         desc = answer['description'] if 'description' in answer else 'no description'
         _logger.error(f'get_drone failed: {desc}')
-        return dss.auxiliaries.zmq.nack(fcn, desc)
+        return dss.auxiliaries.zmq_lib.nack(fcn, desc)
 
       _logger.info(f'-> answer: {answer}')
       self._task_queue.add(self.task_getDrone, answer['id'], answer['ip'], answer['port'])
-      return dss.auxiliaries.zmq.ack(fcn)
+      return dss.auxiliaries.zmq_lib.ack(fcn)
     elif self._drone1.connected():
       self._task_queue.add(self.task_releaseDrones)
-      return dss.auxiliaries.zmq.ack(fcn)
+      return dss.auxiliaries.zmq_lib.ack(fcn)
 
 #----                                                            ----#
   # Request heart beat
   def _request_heart_beat(self, msg:dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ != self._tyramote_id:
-      return dss.auxiliaries.zmq.nack(fcn, 'wrong id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'wrong id')
 
     self._task_queue.add(self.task_low_battery)
     if self._drone2.connected() and self._drone1._lla and self._drone2._lla:
@@ -657,35 +657,35 @@ class TYRApp:
         # drone2 is now disconnected
         self._set_pattern() # to get rid of the offset
 
-    return dss.auxiliaries.zmq.ack(fcn)
+    return dss.auxiliaries.zmq_lib.ack(fcn)
 
 #----                                                            ----#
   # Request get info
   def _request_get_info(self, msg: dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id} is mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id} is mandatory')
 
     id_ = msg['id']
     if id_ != self._tyramote_id:
-      return dss.auxiliaries.zmq.nack(fcn, 'wrong id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'wrong id')
 
     return {'fcn': 'ack', 'call': fcn, 'id': self._app_id, 'info_pub_port': self._info_socket.port}
 
 #----                                                            ----#
   # Request set pattern
   def _request_set_pattern(self, msg:dict) -> dict:
-    fcn = dss.auxiliaries.zmq.get_fcn(msg)
+    fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
     # check arguments
     if not all(key in msg for key in ['id', 'pattern']):
-      return dss.auxiliaries.zmq.nack(fcn, 'bad arguments: {id, pattern} are mandatory')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'bad arguments: {id, pattern} are mandatory')
 
     id_ = msg['id']
     if id_ != self._tyramote_id:
-      return dss.auxiliaries.zmq.nack(fcn, 'wrong id')
+      return dss.auxiliaries.zmq_lib.nack(fcn, 'wrong id')
 
     self._pattern = msg
     del self._pattern['fcn']
@@ -712,7 +712,7 @@ def _main():
   # Split crm connection string"
   (_, crm_port) = args.crm.split(':')
   crm_port = int(crm_port)
-  subnet = dss.auxiliaries.zmq.get_subnet(port=crm_port)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(port=crm_port)
   dss.auxiliaries.logging.configure(f'{args.id}_app_tyrapp', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
   # Create the TYRApp class

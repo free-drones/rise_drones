@@ -70,16 +70,16 @@ class PhotoMission():
 
     # Find the VPN ip of host machine
     self._app_ip = app_ip
-    auto_ip = dss.auxiliaries.zmq.get_ip()
+    auto_ip = dss.auxiliaries.zmq_lib.get_ip()
     if auto_ip != app_ip:
       _logger.warning(f'Automatic get ip function and given ip does not agree: {auto_ip} vs {app_ip}')
 
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -120,7 +120,7 @@ class PhotoMission():
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
@@ -147,7 +147,7 @@ class PhotoMission():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else :
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -158,13 +158,13 @@ class PhotoMission():
 #--------------------------------------------------------------------#
 # Application reply: 'push_dss'
   def _request_push_dss(self, msg):
-    answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Not implemented')
+    answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Not implemented')
     return answer
 
 #--------------------------------------------------------------------#
 # Application reply: 'get_info'
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
@@ -218,7 +218,7 @@ class PhotoMission():
     self.drone.enable_data_stream('STATE')
     self.drone.enable_data_stream('photo_LLA')
     # Create info socket and start listening thread
-    info_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "info " + self.crm.app_id)
+    info_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "info " + self.crm.app_id)
     while self._dss_info_thread_active:
       try:
         (topic, msg) = info_socket.recv()
@@ -280,16 +280,16 @@ class PhotoMission():
 # The main function for subscribing to data messages from the DSS.
   def _main_data_dss(self, ip, port):
     # Create data socket and start listening thread
-    data_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "data " + self.crm.app_id)
+    data_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "data " + self.crm.app_id)
     while self._dss_data_thread_active:
       try:
         (topic, msg) = data_socket.recv()
         if topic in ('photo', 'photo_low'):
-          data = dss.auxiliaries.zmq.string_to_bytes(msg["photo"])
+          data = dss.auxiliaries.zmq_lib.string_to_bytes(msg["photo"])
           photo_filename = msg['metadata']['filename']
-          dss.auxiliaries.zmq.bytes_to_image(photo_filename, data)
+          dss.auxiliaries.zmq_lib.bytes_to_image(photo_filename, data)
           json_filename = photo_filename[:-4] + ".json"
-          dss.auxiliaries.zmq.save_json(json_filename, msg['metadata'])
+          dss.auxiliaries.zmq_lib.save_json(json_filename, msg['metadata'])
           _logger.info("Photo saved to " + msg['metadata']['filename']  + "\r")
           _logger.info("Photo metadata saved to " + json_filename + "\r")
           self.transferred += 1
@@ -305,8 +305,8 @@ class PhotoMission():
   def main(self):
     # Get a drone
     answer = self.crm.get_drone(capabilities=['SPOTLIGHT'])
-    if dss.auxiliaries.zmq.is_nack(answer):
-      _logger.error(f'Did not receive a drone: {dss.auxiliaries.zmq.get_nack_reason(answer)}')
+    if dss.auxiliaries.zmq_lib.is_nack(answer):
+      _logger.error(f'Did not receive a drone: {dss.auxiliaries.zmq_lib.get_nack_reason(answer)}')
       _logger.info('No available drone')
       return
 
@@ -457,7 +457,7 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=args.app_ip)
   # Initiate log file
   dss.auxiliaries.logging.configure('app_viser', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 
