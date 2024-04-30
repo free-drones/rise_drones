@@ -8,7 +8,6 @@ the repository https://github.com/RISE-drones/ussp-api
 import logging
 
 import dss.auxiliaries
-import dss.client
 
 __author__ = 'Lennart Ochel <>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>'
 __version__ = '1.0.0'
@@ -22,9 +21,9 @@ class UsspClientApi:
 
     self._context = context
 
-    self._req_socket = dss.auxiliaries.zmq.Req(context, ussp_ip, req_port, label="USSP-API-REQ", timeout=timeout, self_id=app_id)
-    self._pub_socket = dss.auxiliaries.zmq.Pub(context, ussp_ip, pub_port, label="USSP-API-PUB", self_id=app_id, bind=False)
-    self._sub_socket = dss.auxiliaries.zmq.Sub(context, ussp_ip, sub_port, timeout=int(1e8), label="USSP-API-SUB", self_id=app_id, subscribe_all=False)
+    self._req_socket = dss.auxiliaries.zmq_lib.Req(context, ussp_ip, req_port, label="USSP-API-REQ", timeout=timeout, self_id=app_id)
+    self._pub_socket = dss.auxiliaries.zmq_lib.Pub(context, ussp_ip, pub_port, label="USSP-API-PUB", self_id=app_id, bind=False)
+    self._sub_socket = dss.auxiliaries.zmq_lib.Sub(context, ussp_ip, sub_port, timeout=int(1e8), label="USSP-API-SUB", self_id=app_id, subscribe_all=False)
 
   def __del__(self):
     self._req_socket.close()

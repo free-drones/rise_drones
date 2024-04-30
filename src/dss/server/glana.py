@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 
-import zmq
+import zmq 
 
 import dss.auxiliaries
 
@@ -21,6 +21,7 @@ class Glana:
 
     self._address = address
     self._context = context
+    #self._context = dss.auxiliaries.zmq_lib.Context()
     self._mutex = threading.Lock()
     self._socket = self._context.socket(zmq.REQ)
     self._connected = False
@@ -126,10 +127,10 @@ class Glana:
       try:
         self._socket.send_json(json_msg)
         json_reply = self._socket.recv_json()
-      except zmq.error.Again:
+      except dss.auxiliaries.exception.Again:
         logging.warning("glana-service isn't responding to request %s", str(msg))
         reply = None
-      except zmq.error.ZMQError:
+      except dss.auxiliaries.exception.Error:
         logging.error("Lost connection to glana-service")
         reply = None
       else:

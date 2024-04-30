@@ -14,7 +14,6 @@ import logging
 import time
 
 import dss.auxiliaries
-import dss.client
 
 __author__ = 'Lennart Ochel <>, Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'
 __version__ = '1.1.0'
@@ -35,7 +34,7 @@ class Client:
     self._app_id = 'da000'
 
     self._alive = False
-    self._context = context if context else dss.auxiliaries.zmq.Context()
+    self._context = context if context else dss.auxiliaries.zmq_lib.Context()
     self._dss = None
     self._exception_handler = exception_handler
     self._input_handler = None
@@ -91,7 +90,7 @@ class Client:
       raise dss.auxiliaries.exception.Error('An asynchronous input handler is already defined')
 
     self._input_handler = input_handler
-    self._input_socket = dss.auxiliaries.zmq.Rep(self._context, '*', port, label='input-rep', timeout=self._timeout)
+    self._input_socket = dss.auxiliaries.zmq_lib.Rep(self._context, '*', port, label='input-rep', timeout=self._timeout)
     self._logger.info(f"Starting input server on port {port}")
 
   def raise_if_aborted(self, app_allowed=True):

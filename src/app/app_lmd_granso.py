@@ -36,7 +36,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.app_lmd')
-_context = dss.auxiliaries.zmq.Context()
+_context = dss.auxiliaries.zmq_lib.Context()
 
 
 class Waypoint():
@@ -65,9 +65,9 @@ class AppLmd():
     # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -126,7 +126,7 @@ class AppLmd():
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
@@ -153,7 +153,7 @@ class AppLmd():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else:
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -164,13 +164,13 @@ class AppLmd():
 #--------------------------------------------------------------------#
 # Application reply: 'push_dss'
   def _request_push_dss(self, msg):
-    answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Not implemented')
+    answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Not implemented')
     return answer
 
 #--------------------------------------------------------------------#
 # Applicaiton reply: 'get_info'
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
@@ -179,7 +179,7 @@ class AppLmd():
 # Applicaiton reply: 'clearance_landing'
   def _request_clearance_landing(self, msg):
     self.clearance_landing = True
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     return answer
 
 #--------------------------------------------------------------------#
@@ -200,7 +200,7 @@ class AppLmd():
     #self.drone.enable_data_stream('LLA')
     #self.drone.enable_data_stream('battery')
     # Create info socket and start listening thread
-    info_socket = dss.auxiliaries.zmq.Sub(_context, ip, port, "info " + self.crm.app_id)
+    info_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, port, "info " + self.crm.app_id)
     while self._dss_info_thread_active:
       try:
         (topic, _) = info_socket.recv()
@@ -221,7 +221,7 @@ class AppLmd():
     while self.alive and not drone_received:
       # Get a drone
       answer = self.crm.get_drone(capabilities=['LMD'])
-      if dss.auxiliaries.zmq.is_nack(answer):
+      if dss.auxiliaries.zmq_lib.is_nack(answer):
         _logger.debug("No drone available - sleeping for 2 seconds")
         time.sleep(2.0)
       else:
@@ -318,7 +318,7 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=args.app_ip)
   # Initiate log file
   dss.auxiliaries.logging.configure('app_lmd_granso', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 

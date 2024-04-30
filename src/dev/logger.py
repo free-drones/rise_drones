@@ -12,12 +12,7 @@ TODO: Tell the client to enable logging using their request/reply socket
 import argparse
 import logging
 
-#import zmq
-
 import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
 
 import dss.auxiliaries
 from dss.auxiliaries.config import config
@@ -35,13 +30,13 @@ def _main():
   dss.auxiliaries.logging.configure(f'{args.id}.log', stdout=args.stdout, rotating=True, loglevel='info')
   _logger = logging.getLogger(f'dss.{args.id}')
 
-  context = dss.auxiliaries.zmq.Context()
+  context = dss.auxiliaries.zmq_lib.Context()
 
-  crm = dss.auxiliaries.zmq.Req(context, config["default_crm_ip"], config["default_crm_port"])
+  crm = dss.auxiliaries.zmq_lib.Req(context, config["default_crm_ip"], config["default_crm_port"])
   answer = crm.send_and_receive({'id': 'root', 'fcn': 'clients', 'filter': args.id})
   del crm
 
-  if not dss.auxiliaries.zmq.is_ack(answer, 'clients'):
+  if not dss.auxiliaries.zmq_lib.is_ack(answer, 'clients'):
     print(answer)
     sys.exit(1)
 
@@ -50,7 +45,7 @@ def _main():
     sys.exit(1)
 
   ip = answer['clients'][0]['ip']
-  socket = dss.auxiliaries.zmq.Sub(context, ip=ip, port=args.port, timeout=10000)
+  socket = dss.auxiliaries.zmq_lib.Sub(context, ip=ip, port=args.port, timeout=10000)
 
   while socket:
     try:

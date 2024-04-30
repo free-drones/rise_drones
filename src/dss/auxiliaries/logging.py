@@ -29,8 +29,8 @@ def configure(filename: str = '', stdout: bool = True, rotating = False, logleve
   if not os.path.isdir(dir):
     try:
       os.makedirs(dir)
-    except OSError:
-      raise dss.auxiliaries.exception.Error(f'Creation of the log directory "{dir}" failed')
+    except OSError as exc:
+      raise dss.auxiliaries.exception.Error(f'Creation of the log directory "{dir}" failed') from exc
 
   timestamp = time.strftime('%Y%m%d_%H%M%S')
 

@@ -7,11 +7,6 @@
 import argparse
 import json
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
 from dss.auxiliaries.config import config
 
@@ -26,9 +21,9 @@ def _main():
   parser.add_argument('--id', default=config["CRM"]["default_id"], help=config["CRM"]["default_id"])
   args = parser.parse_args()
 
-  context = dss.auxiliaries.zmq.Context()
-  socket = dss.auxiliaries.zmq.Req(context, args.ip, args.port)
-  _print('Local IP: ' + dss.auxiliaries.zmq.get_ip_address())
+  context = dss.auxiliaries.zmq_lib.Context()
+  socket = dss.auxiliaries.zmq_lib.Req(context, args.ip, args.port)
+  _print('Local IP: ' + dss.auxiliaries.zmq_lib.get_ip_address())
 
   msg = {'id':args.id, 'fcn': 'clients'}
   _print('Sending message: \n' + json.dumps(msg, indent = 4))

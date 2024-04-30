@@ -1203,8 +1203,8 @@ class Hexacopter:
       # Allow mode change to take a little while, but wait no more than 5s.
       self.set_flight_mode_and_wait('GUIDED', timeout=5.0)
       self.logger.info("Switched back to GUIDED mode")
-    except TimeoutError:
-      raise dss.auxiliaries.exception.Error("Failed to switch back to GUIDED")
+    except TimeoutError as exc:
+      raise dss.auxiliaries.exception.Error("Failed to switch back to GUIDED") from exc
 
   def task_land(self):
     self._status_msg = 'landing'
@@ -1232,8 +1232,8 @@ class Hexacopter:
         try:
           # Allow mode change to take a little while, but wait no more than 5s.
           self.set_flight_mode_and_wait('GUIDED', timeout=5.0)
-        except TimeoutError:
-          raise dss.auxiliaries.exception.Error("Failed to switch back to GUIDED")
+        except TimeoutError as exc:
+          raise dss.auxiliaries.exception.Error("Failed to switch back to GUIDED") from exc
         else:
           raise dss.auxiliaries.exception.AbortTask()
 
@@ -1270,8 +1270,8 @@ class Hexacopter:
     self.logger.info("Arming motors...")
     try:
       self.arm_and_wait(timeout=10.0)
-    except TimeoutError:
-      raise dss.auxiliaries.exception.Error("Vehicle did not arm")
+    except TimeoutError as exc:
+      raise dss.auxiliaries.exception.Error("Vehicle did not arm") from exc
 
     # Vehicle is armed, sleep to allow motors to spin up.
     # CRITICAL!!! Lowering the time.sleep period can cause crash.

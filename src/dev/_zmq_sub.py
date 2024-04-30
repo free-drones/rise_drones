@@ -4,13 +4,7 @@
 
 import argparse
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
 import dss.auxiliaries
-
 
 def _print(text):
   print(__file__ + ': ' + str(text))
@@ -23,12 +17,12 @@ def _main():
   parser.add_argument('--port', default=5559, help='port to subscribe to')
   args = parser.parse_args()
 
-  context = dss.auxiliaries.zmq.Context()
-  socket = dss.auxiliaries.zmq.Sub(context, ip=args.ip, port=args.port, timeout=30000, subscribe_all=False)
+  context = dss.auxiliaries.zmq_lib.Context()
+  socket = dss.auxiliaries.zmq_lib.Sub(context, ip=args.ip, port=args.port, timeout=30000, subscribe_all=False)
   # subscribing to '' means subscribe to all
   sub_to_topic = ''
   socket.subscribe(sub_to_topic)
-  _print('Local IP:' + dss.auxiliaries.zmq.get_ip_address())
+  _print('Local IP:' + dss.auxiliaries.zmq_lib.get_ip_address())
   _print(f'Listening for all topics beginning with {sub_to_topic} from: ' + args.ip + ':' + str(args.port))
 
 

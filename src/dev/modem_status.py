@@ -7,12 +7,7 @@ import json
 import argparse
 import traceback
 
-import sys
-import os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0,os.path.join(os.path.dirname(__file__), '../..'))
-
-from dss.auxiliaries.modem import Modem
+import dss.auxiliaries
 
 
 #--------------------------------------------------------------------#
@@ -57,7 +52,7 @@ def _main():
     device=f"/dev/serial/by-id/usb-Android_Android-if0{dev_path}-port0"
     if not connected:
       try:
-        modem = Modem(device)
+        modem =   dss.auxiliaries.modem.Modem(device)
         print(f'MODEM: Connected to modem on {device}')
         connected=True
       except:

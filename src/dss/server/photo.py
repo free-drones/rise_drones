@@ -64,8 +64,8 @@ class Server:
     if not os.path.isdir(self._storage_dir):
       try:
         os.makedirs(self._storage_dir)
-      except OSError:
-        raise dss.auxiliaries.exception.Error('Creation of the storage directory failed')
+      except OSError as exc:
+        raise dss.auxiliaries.exception.Error('Creation of the storage directory failed') from exc
 
     # file handle
     self._gps_data = open(os.path.join(self._storage_dir, 'gps_data.csv'), 'w')
@@ -105,7 +105,7 @@ class Server:
     self.alive = False
 
     if self._serv_socket:
-      dss.auxiliaries.zmq.close_socket_gracefully(self._serv_socket)
+      dss.auxiliaries.zmq_lib.close_socket_gracefully(self._serv_socket)
 
     if self._camera:
       gphoto2.check_result(gphoto2.gp_camera_exit(self._camera))
@@ -138,7 +138,7 @@ class Server:
       except zmq.error.Again:
         pass
       else:
-        (topic, data) = dss.auxiliaries.zmq.demogrify(message)
+        (topic, data) = dss.auxiliaries.zmq_lib.demogrify(message)
         if topic == 'LGF':
           with self._mutex:
             self._lgf_data = data
@@ -327,49 +327,49 @@ class Client:
 
   def __del__(self):
     if self._photo_socket:
-      dss.auxiliaries.zmq.close_socket_gracefully(self._photo_socket)
+      dss.auxiliaries.zmq_lib.close_socket_gracefully(self._photo_socket)
 
   def request(self, msg: dict) -> dict:
     if not self._photo_socket:
       fcn = msg['fcn'] if 'fcn' in msg else ''
       answer = {'fcn': 'nack', 'arg': fcn, 'arg2': "Client isn't connected to the photo server"}
     else:
-      answer = dss.auxiliaries.zmq.send_and_receive(self._photo_socket, msg)
+      answer = dss.auxiliaries.zmq_lib.send_and_receive(self._photo_socket, msg)
     self._logger.info("Photo server replied: %s", answer)
     return answer
 
   def autogain(self) -> bool:
     answer = self.request({'fcn': 'autogain'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'autogain')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'autogain')
 
   def connect(self, name) -> bool:
     answer = self.request({'fcn': 'connect', 'name': name})
-    return dss.auxiliaries.zmq.is_ack(answer, 'connect')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'connect')
 
   def disconnect(self) -> bool:
     answer = self.request({'fcn': 'disconnect'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'disconnect')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'disconnect')
 
   def heartbeat(self) -> bool:
     answer = self.request({'fcn': 'heartbeat'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'heartbeat')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'heartbeat')
 
   def rec_ok(self) -> bool:
     answer = self.request({'fcn': 'rec_ok'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'rec_ok')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'rec_ok')
 
   def start_rec(self) -> bool:
     answer = self.request({'fcn': 'start_rec'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'start_rec')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'start_rec')
 
   def stop_rec(self) -> bool:
     answer = self.request({'fcn': 'stop_rec'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'stop_rec')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'stop_rec')
 
   def take_picture(self) -> bool:
     answer = self.request({'fcn': 'take_picture'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'take_picture')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'take_picture')
 
   def up(self) -> bool:
     answer = self.request({'fcn': 'up'})
-    return dss.auxiliaries.zmq.is_ack(answer, 'up')
+    return dss.auxiliaries.zmq_lib.is_ack(answer, 'up')

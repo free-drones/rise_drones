@@ -27,7 +27,7 @@ class CRM:
     self._app_id = app_id
 
     # Create request socket, don't start heartbeat thread yet.
-    self._socket = dss.auxiliaries.zmq.Req(self._context, self._ip, self._port, label='crm', timeout=2000)
+    self._socket = dss.auxiliaries.zmq_lib.Req(self._context, self._ip, self._port, label='crm', timeout=2000)
 
   def __del__(self):
     if hasattr(self, '_socket'): # this is sometimes needed if the __init__ function failed
@@ -89,8 +89,8 @@ class CRM:
     assert self._app_id != 'root', '"root" cannot get registered as application'
 
     answer = self._socket.send_and_receive({'fcn': 'register', 'name': self._app_name, 'desc': self._desc, 'type': type, 'capabilities': capabilities, 'id': self._app_id, 'ip': app_ip, 'port': app_port})
-    if dss.auxiliaries.zmq.is_nack(answer):
-      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer))
+    if dss.auxiliaries.zmq_lib.is_nack(answer):
+      raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer))
 
     self._app_id = answer['id']
     self._socket.start_heartbeat(self._app_id)
@@ -108,7 +108,7 @@ class CRM:
     if self._app_id != 'root':
       answer = self._socket.send_and_receive({'fcn': 'unregister', 'id': self._app_id})
     else:
-      answer = dss.auxiliaries.zmq.ack('unregister')
+      answer = dss.auxiliaries.zmq_lib.ack('unregister')
     self._socket.close()
     return answer
 

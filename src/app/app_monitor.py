@@ -29,7 +29,7 @@ __status__ = 'development'
 #--------------------------------------------------------------------#
 
 _logger = logging.getLogger('dss.monitor')
-_context = dss.auxiliaries.zmq.Context()
+_context = dss.auxiliaries.zmq_lib.Context()
 
 #--------------------------------------------------------------------#
 class Monitor():
@@ -45,16 +45,16 @@ class Monitor():
     # If dronenet VPN is used, find the VPN ip of host machine
     # Find the VPN ip of host machine
     self._app_ip = app_ip
-    auto_ip = dss.auxiliaries.zmq.get_ip()
+    auto_ip = dss.auxiliaries.zmq_lib.get_ip()
     if auto_ip != app_ip:
       _logger.warning("Automatic get ip function and given ip does not agree: %s vs %s", auto_ip, app_ip)
 
       # The application sockets
     # Use ports depending on subnet used to pass RISE firewall
     # Rep: ANY -> APP
-    self._app_socket = dss.auxiliaries.zmq.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._app_socket = dss.auxiliaries.zmq_lib.Rep(_context, label='app', min_port=self.crm.port, max_port=self.crm.port+50)
     # Pub: APP -> ANY
-    self._info_socket = dss.auxiliaries.zmq.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
+    self._info_socket = dss.auxiliaries.zmq_lib.Pub(_context, label='info', min_port=self.crm.port, max_port=self.crm.port+50)
 
     # Start the app reply thread
     self._app_reply_thread = threading.Thread(target=self._main_app_reply, daemon=True)
@@ -104,7 +104,7 @@ class Monitor():
     # Unregister APP from CRM
     _logger.info("Unregister from CRM")
     answer = self.crm.unregister()
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('Unregister failed: {answer}')
     _logger.info("CRM socket closed")
 
@@ -126,7 +126,7 @@ class Monitor():
           request = self._commands[fcn]['request']
           answer = request(msg)
         else:
-          answer = dss.auxiliaries.zmq.nack(msg['fcn'], 'Request not supported')
+          answer = dss.auxiliaries.zmq_lib.nack(msg['fcn'], 'Request not supported')
         answer = json.dumps(answer)
         self._app_socket.send_json(answer)
       except:
@@ -137,14 +137,14 @@ class Monitor():
 #--------------------------------------------------------------------#
 # Application reply functions
   def _request_get_info(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     answer['id'] = self.crm.app_id
     answer['info_pub_port'] = self._info_socket.port
     answer['data_pub_port'] = None
     return answer
 
   def _request_get_drone_data(self, msg):
-    answer = dss.auxiliaries.zmq.ack(msg['fcn'])
+    answer = dss.auxiliaries.zmq_lib.ack(msg['fcn'])
     for key in self.drone_data_locks:
       self.drone_data_locks[key].acquire()
     answer['data'] = self.drone_data
@@ -221,7 +221,7 @@ class Monitor():
     # print("Debug: New client ip and port: ", ip, port)
 
     # Connect the Request socket to enable the STATE stream
-    req_socket = dss.auxiliaries.zmq.Req(_context, ip, port, label=drone_id, timeout=2000)
+    req_socket = dss.auxiliaries.zmq_lib.Req(_context, ip, port, label=drone_id, timeout=2000)
     # Enable stream
     stream = 'STATE'
     self.enable_stream(stream,req_socket)
@@ -229,7 +229,7 @@ class Monitor():
     sub_port = self.get_port(req_socket, 'info_pub_port')
 
     # Create subscription socket and start listening thread
-    sub_socket = dss.auxiliaries.zmq.Sub(_context, ip, sub_port, drone_id)
+    sub_socket = dss.auxiliaries.zmq_lib.Sub(_context, ip, sub_port, drone_id)
     sub_socket.subscribe(stream)
 
     if self.mqtt_agent:
@@ -267,7 +267,7 @@ class Monitor():
     msg['stream'] = stream
     msg['enable'] = True
     answer = socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('data_stream error: %s', answer)
 
 #--------------------------------------------------------------------#
@@ -278,7 +278,7 @@ class Monitor():
     msg['stream'] = stream
     msg['enable'] = False
     answer = socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('data_stream error: %s', answer)
 
 #--------------------------------------------------------------------#
@@ -287,7 +287,7 @@ class Monitor():
   def get_port(self, socket, port_name) -> int:
     msg = {'fcn': 'get_info', 'id': self.crm.app_id}
     answer = socket.send_and_receive(msg)
-    if not dss.auxiliaries.zmq.is_ack(answer):
+    if not dss.auxiliaries.zmq_lib.is_ack(answer):
       _logger.error('get_info error: %s', answer)
       return 0
     return int(answer[port_name])
@@ -304,7 +304,7 @@ class Monitor():
     # Main loop looking for changes in crm clients list
     while self._alive:
       answer = self.crm.clients('dss')
-      if dss.auxiliaries.zmq.is_ack(answer, 'clients'):
+      if dss.auxiliaries.zmq_lib.is_ack(answer, 'clients'):
         # The latest list of clients from crm
         crm_clients = answer['clients']
 
@@ -372,7 +372,7 @@ def _main():
   args = parser.parse_args()
 
   # Identify subnet to sort log files in structure
-  subnet = dss.auxiliaries.zmq.get_subnet(ip=args.app_ip)
+  subnet = dss.auxiliaries.zmq_lib.get_subnet(ip=args.app_ip)
   # Initiate the log file
   dss.auxiliaries.logging.configure('app_monitor', stdout=args.stdout, rotating=True, loglevel=args.log, subdir=subnet)
 

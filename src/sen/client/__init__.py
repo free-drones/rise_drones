@@ -2,8 +2,10 @@
 
 # Specify what classes should be imported when import src.sen.client
 
-from sen.client.client_lib import Client
-from sen.client.sen_api import SEN
+from . import (
+    client_lib,
+    sen_api,
+)
 
 
 __author__ = 'Andreas Gising <andreas.gising@ri.se>, Kristoffer Bergman <kristoffer.bergman@ri.se>, Hanna Müller <hanna.muller@ri.se>, Joel Nordahl'

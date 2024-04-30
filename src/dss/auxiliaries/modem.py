@@ -220,7 +220,7 @@ class Modem:
                 if params[i]['mode'] == "LTE":
                     if len(lst) == 13:
                         # LTE mode, neighbourcell intra based on lenth
-                        if self.mode == "LTE" or self.mode == None:
+                        if self.mode in ("LTE", None):
                             params[i]['earfcn'] = lst[2].replace("\"","")
                             params[i]['pcid'] = lst[3].replace("\"","")
                             params[i]['rsrq'] = lst[4].replace("\"","")
@@ -235,7 +235,7 @@ class Modem:
 
                     if len(lst) == 12:
                         # LTE mode, neightbourcell inter based on length
-                        if self.mode == "LTE" or self.mode == None:
+                        if self.mode in ("LTE", None):
                             params[i]['earfcn'] = lst[2].replace("\"","")
                             params[i]['pcid'] = lst[3].replace("\"","")
                             params[i]['rsrq'] = lst[4].replace("\"","")

@@ -8,11 +8,11 @@ import socket
 import threading
 import traceback
 import typing
-
 import zmq
 
-import dss.auxiliaries.exception
-import dss.auxiliaries.config
+from netifaces import AF_INET, ifaddresses, interfaces
+
+import dss.auxiliaries
 
 #--------------------------------------------------------------------#
 
@@ -60,7 +60,7 @@ def get_ip_address() -> str:
 def get_ip() -> str:
   '''Returns the ip of the vpn subnet. If that is not possible, it
   uses get_ip_address as fallback strategy.'''
-  from netifaces import AF_INET, ifaddresses, interfaces
+  #from netifaces import AF_INET, ifaddresses, interfaces
 
   # If dronenet VPN is used, find the VPN ip of host machine
   for ifaceName in interfaces():
@@ -287,8 +287,8 @@ class Req(_Socket):
         answer = json.loads(json_reply)
         self._event.set()  # indicates successful communication
         # Should this function also raise the Nack exeption? It is implemented separately in many dss_api calls
-        #if dss.auxiliaries.zmq.is_nack(answer):
-        #  raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq.get_nack_reason(answer), msg['fcn'])
+        #if dss.auxiliaries.zmq_lib.is_nack(answer):
+        #  raise dss.auxiliaries.exception.Nack(dss.auxiliaries.zmq_lib.get_nack_reason(answer), msg['fcn'])
 
     _logger.debug(f'{self._label} recv: %s\n', str(answer)[:256])
     return answer
@@ -342,7 +342,7 @@ class Req(_Socket):
           # There was no answer, create a virtual nack to not repeat code
           answer = {'fcn': 'nack'}
 
-        if not dss.auxiliaries.zmq.is_ack(answer):
+        if not dss.auxiliaries.zmq_lib.is_ack(answer):
           attempts += 1
           if attempts < 3:
             _logger.warning(f"{self._label} no response to heartbeat ({attempts})")

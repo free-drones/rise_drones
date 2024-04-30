@@ -2,9 +2,21 @@
 
 
 from . import (
-    auxiliaries,
-    client,
-    server,
+    _zmq_pub,
+    _zmq_rep,
+    _zmq_req,
+    _zmq_sub,
+    app_keyboard,
+    app_template_photo_mission,
+    app_template_singledrone,
+    app_test_sensor,
+    app_verify,
+    logger,
+    manage_crm,
+    modem_status,
+    network_status,
+    rotate_mission,
+    run_heartbeat,
 )
 
 
