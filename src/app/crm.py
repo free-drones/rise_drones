@@ -396,7 +396,7 @@ class CRM:
           continue
         info['project'] = 'unknown'
         for _project in config["zeroMQ"]["subnets"]:
-          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["subnet"]}[0-9][0-9].*$')
+          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["ip"]}[0-9][0-9].*$')
           if regexp.match(info['cmd']):
             info['project'] = _project
             break
