@@ -396,8 +396,11 @@ class CRM:
           continue
         info['project'] = 'unknown'
         for _project in config["zeroMQ"]["subnets"]:
-          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["subnet"]}[0-9][0-9].*$')
-          if regexp.match(info['cmd']):
+          regexp_ip = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["ip"]}[0-9][0-9].*$')
+          port_three_first = str(config["zeroMQ"]["subnets"][_project]["crm_port"])[:3]
+          regexp_port = re.compile(f'^.*[:]{port_three_first}[0-9][0-9]')         
+
+          if regexp_ip.match(info['cmd']) or regexp_port.match(info['cmd']):
             info['project'] = _project
             break
         info['killable'] = 'crm.py' not in info['cmd'] and project == info['project']
