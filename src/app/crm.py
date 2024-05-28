@@ -396,8 +396,11 @@ class CRM:
           continue
         info['project'] = 'unknown'
         for _project in config["zeroMQ"]["subnets"]:
-          regexp = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["ip"]}[0-9][0-9].*$')
-          if regexp.match(info['cmd']):
+          regexp_ip = re.compile(f'^.*[:=]{config["zeroMQ"]["subnets"][_project]["ip"]}[0-9][0-9].*$')
+          port_three_first = str(config["zeroMQ"]["subnets"][_project]["crm_port"])[:3]
+          regexp_port = re.compile(f'^.*[:]{port_three_first}[0-9][0-9]')         
+
+          if regexp_ip.match(info['cmd']) or regexp_port.match(info['cmd']):
             info['project'] = _project
             break
         info['killable'] = 'crm.py' not in info['cmd'] and project == info['project']
@@ -513,7 +516,7 @@ class CRM:
     port = self._socket.port
 
     subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_1"]["lat"]},{config["CRM"]["SITL"]["drone_1"]["lon"]},{config["CRM"]["SITL"]["drone_1"]["alt"]},{config["CRM"]["SITL"]["drone_1"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/default_params/copter.parm', f'--base-port={port+56}', '-I0', '--sysid', '1'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
-    subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+56}', f'--out=tcpin:0.0.0.0:{port+87}', f'--out=tcpin:0.0.0.0:{port+88}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
+    subprocess.Popen([config["CRM"]["SITL"]["pythonPATH"], config["CRM"]["SITL"]["mavproxyPATH"], f'--master=tcp:127.0.0.1:{port+56}', f'--out=tcpin:0.0.0.0:{port+87}', f'--out=tcpin:0.0.0.0:{port+88}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
 
     dss_id = '{type}{index:03d}'.format(type='dss', index=self._nextIndex)
     self._nextIndex += 1
@@ -536,13 +539,13 @@ class CRM:
 
     # arducopter expects an interactive shell (mavproxy --daemon does not)
     subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_2"]["lat"]},{config["CRM"]["SITL"]["drone_2"]["lon"]},{config["CRM"]["SITL"]["drone_2"]["alt"]},{config["CRM"]["SITL"]["drone_2"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/default_params/copter.parm', f'--base-port={port+51}', '-I0', '--sysid', '1'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
-    subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+51}', f'--out=tcpin:0.0.0.0:{port+81}', f'--out=tcpin:0.0.0.0:{port+82}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
+    subprocess.Popen([config["CRM"]["SITL"]["pythonPATH"], config["CRM"]["SITL"]["mavproxyPATH"], f'--master=tcp:127.0.0.1:{port+51}', f'--out=tcpin:0.0.0.0:{port+81}', f'--out=tcpin:0.0.0.0:{port+82}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
 
     subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_3"]["lat"]},{config["CRM"]["SITL"]["drone_3"]["lon"]},{config["CRM"]["SITL"]["drone_3"]["alt"]},{config["CRM"]["SITL"]["drone_3"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/default_params/copter.parm', f'--base-port={port+61}', '-I1', '--sysid', '2'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
-    subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+61}', f'--out=tcpin:0.0.0.0:{port+83}', f'--out=tcpin:0.0.0.0:{port+84}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
+    subprocess.Popen([config["CRM"]["SITL"]["pythonPATH"], config["CRM"]["SITL"]["mavproxyPATH"], f'--master=tcp:127.0.0.1:{port+61}', f'--out=tcpin:0.0.0.0:{port+83}', f'--out=tcpin:0.0.0.0:{port+84}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
 
     subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_4"]["lat"]},{config["CRM"]["SITL"]["drone_4"]["lon"]},{config["CRM"]["SITL"]["drone_4"]["alt"]},{config["CRM"]["SITL"]["drone_4"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/default_params/copter.parm', f'--base-port={port+71}', '-I2', '--sysid', '3'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
-    subprocess.Popen(['.ardupilot/bin/python3', '.ardupilot/bin/mavproxy.py', f'--master=tcp:127.0.0.1:{port+71}', f'--out=tcpin:0.0.0.0:{port+85}', f'--out=tcpin:0.0.0.0:{port+86}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
+    subprocess.Popen([config["CRM"]["SITL"]["pythonPATH"], config["CRM"]["SITL"]["mavproxyPATH"], f'--master=tcp:127.0.0.1:{port+71}', f'--out=tcpin:0.0.0.0:{port+85}', f'--out=tcpin:0.0.0.0:{port+86}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
 
     dss_id = '{type}{index:03d}'.format(type='dss', index=self._nextIndex)
     self._nextIndex += 1

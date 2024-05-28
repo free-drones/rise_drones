@@ -38,7 +38,7 @@ def get_subnet(ip: typing.Optional[str] = None, port: typing.Optional[int] = Non
 
   if port:
     for subnet in dss.auxiliaries.config.config['zeroMQ']['subnets']:
-      if dss.auxiliaries.config.config['zeroMQ']['subnets'][subnet]['crm_port'] < port <= dss.auxiliaries.config.config['zeroMQ']['subnets'][subnet]['crm_port']+99:
+      if dss.auxiliaries.config.config['zeroMQ']['subnets'][subnet]['crm_port'] <= port <= dss.auxiliaries.config.config['zeroMQ']['subnets'][subnet]['crm_port']+99:
         return subnet
 
   return ''
