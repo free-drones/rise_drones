@@ -35,6 +35,139 @@ Central Resource Manager (CRM) is a resource manager that runs in the network. T
 > pip3 install -r requirements.txt <br/>
 > Modify ardupilot/Tools/autotest/locations.txt <br/>
 
+It is recommended to put a configfile in ~/.rise_drones/.config. but it can also be put in rise_drones/src or from where script is called.
+```javascript
+{
+  "zeroMQ": {
+    "subnets" : {
+      "vpn161": {
+        "ip": "10.44.161.",
+        "crm_ip": "10.44.160.10",
+        "crm_port": 16100,
+        "min_port": 16100,
+        "max_port": 16199
+      },
+      "home": {
+        "ip": "192.168.1.",
+      	"crm_ip": "192.168.1.196",
+        "crm_port": 10000,
+        "min_port": 10000,
+        "max_port": 10099
+      }
+    }
+  },
+  "CRM" : {
+    "default_crm_ip": "127.0.0.1",
+    "default_crm_port": 12700,
+    "SITL": {
+      "pythonPATH": "/home/pi/.venv/venv-ardupilot/bin/python3",
+      "mavproxyPATH": "/home/pi/.venv/venv-ardupilot/bin/mavproxy.py",
+      "ardupilot_dir": "/home/pi/ardupilot/",
+      "drone_1": {
+          "lat": 58.408868,
+          "lon": 15.659205,
+          "alt": 30.5,
+          "heading": 45
+        },
+        "drone_2": {
+          "lat": 58.38825737644909,
+          "lon": 13.481121210496298,
+          "alt": 130.6,
+          "heading": 45
+        },
+        "drone_3": {
+          "lat": 58.3884,
+          "lon": 13.4844,
+          "alt": 130.6,
+          "heading": 45
+        },
+        "drone_4": {
+          "lat": 58.38825737644909,
+          "lon": 13.481121210496298,
+          "alt": 130.6,
+          "heading": 45
+        },
+        "_airport": {
+          "lat": 58.408871,
+          "lon": 15.659212,
+          "alt": 30.5,
+          "heading": 45
+        },
+        "_kolbyttemon": {
+          "lat": 58.327740,
+          "lon": 15.634766,
+          "alt": 35,
+          "heading": 45
+        },
+        "_skara": {
+         "lat": 58.38825737644909,
+         "lon": 13.481121210496298,
+         "alt": 130.6,
+         "heading" : 45
+        }
+      }
+  },
+  "DSS": {
+    "HeartbeatAttempts":     3,
+    "HeartbeatClientSocket": "tcp://192.168.1.4:5560",
+    "PhotoClient":           "tcp://192.168.1.3:5556",
+    "ServSocket":            "tcp://*:5557",
+    "GlanaClientSocket":     "tcp://192.168.1.3:5562",
+    "VEL": {
+      "vel_lim_enable": 0,
+      "vel_x_max": 5,
+      "vel_x_min": -3,
+      "vel_y_max": 3,
+      "vel_y_min": -3,
+      "vel_z_max": 1,
+      "vel_z_min": -1.5,
+      "max_yaw_rate": 15,
+      "min_yaw_rate": -15
+    },
+    "ACC": {
+      "acc_lim_enable": 1,
+      "acc_x_max": 0.8,
+      "acc_x_min": 0.8,
+      "acc_y_max": 0.8,
+      "acc_y_min": 0.8,
+      "acc_z_max": 0.5,
+      "acc_z_min": 0.5,
+      "yaw_turd_max": 10,
+      "yaw_turd_min": 10
+    },
+    "POS": {
+      "pos_ned_n_max": 200,
+      "pos_ned_n_min":-200,
+      "pos_ned_e_max": 200,
+      "pos_ned_e_min": -200,
+      "pos_ned_d_max": 0,
+      "pos_ned_d_min": -80
+    },
+    "WP": {
+      "max_wp_distance": 25
+    }
+  },
+  "mqtt" : {
+    "user": "user" ,
+    "password": "password",
+    "broker": "broker-url",
+    "port": 5555,
+    "tls_connection": true
+  },
+  "app_ussp_mission" :{
+    "ussp_ip": "localhost",
+    "ussp_req_port": 5555,
+    "ussp_pub_port": 5556,
+    "ussp_sub_port": 5557,
+    "operator_id": "SWE33DummyOperatorID",
+    "delta_r_max": 2000.0,
+    "height_max": 120.0,
+    "height_min": 8.0
+  }
+}
+
+```
+
 ## Contributing
 If you would want to contribute to RISE drone system please take a look at [the guide for contributing](contributing.md) to find out more about the guidelines on how to proceed.
 
