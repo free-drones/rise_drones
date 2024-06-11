@@ -155,7 +155,7 @@ class CRM:
 
       try:
         msg = self._socket.recv_json()
-      except dss.auxiliaries.exception.Again as error:
+      except dss.auxiliaries.exception.Again:
         self.delStaleClients()
         continue # timeout: no message received; try again
 
@@ -387,7 +387,7 @@ class CRM:
     processes = list()
     for proc in psutil.process_iter():
       try:
-        if 'python' not in proc.name().lower() and 'arducopter' not in proc.name() and 'mavproxy' not in proc.name():
+        if 'python' not in proc.name().lower() and 'ardu' not in proc.name() and 'mavproxy' not in proc.name():
           continue
         # get process detail as dictionary
         info = proc.as_dict(attrs=['pid', 'name', 'cpu_percent', 'memory_percent', 'create_time', 'cmdline'])
@@ -515,15 +515,16 @@ class CRM:
 
     port = self._socket.port
 
-    subprocess.Popen(['build/sitl/bin/arducopter', '-S', '--model', '+', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_1"]["lat"]},{config["CRM"]["SITL"]["drone_1"]["lon"]},{config["CRM"]["SITL"]["drone_1"]["alt"]},{config["CRM"]["SITL"]["drone_1"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/default_params/copter.parm', f'--base-port={port+56}', '-I0', '--sysid', '1'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
+    subprocess.Popen(['build/sitl/bin/arduplane', '-S', '--model', 'plane', '--speedup', '1', '--home', f'{config["CRM"]["SITL"]["drone_1"]["lat"]},{config["CRM"]["SITL"]["drone_1"]["lon"]},{config["CRM"]["SITL"]["drone_1"]["alt"]},{config["CRM"]["SITL"]["drone_1"]["heading"]}', f'--defaults={config["CRM"]["SITL"]["ardupilot_dir"]}Tools/autotest/models/plane.parm', f'--base-port={port+56}', '-I0', '--sysid', '1'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
     subprocess.Popen([config["CRM"]["SITL"]["pythonPATH"], config["CRM"]["SITL"]["mavproxyPATH"], f'--master=tcp:127.0.0.1:{port+56}', f'--out=tcpin:0.0.0.0:{port+87}', f'--out=tcpin:0.0.0.0:{port+88}', '--daemon'], cwd=f'{config["CRM"]["SITL"]["ardupilot_dir"]}', shell=False)
 
     dss_id = '{type}{index:03d}'.format(type='dss', index=self._nextIndex)
     self._nextIndex += 1
     self._clients[dss_id] = {'name': 'crm_dss.py', 'desc': '', 'type': 'dss', 'owner': 'crm', 'ip': '', 'port': '', 'timestamp': self._now}
-    dss.auxiliaries.spawnDaemon.spawnDaemon('./crm_dss.py', 'crm_dss.py', f'--dss_id={dss_id}', f'--crm={self._ip}:{self._socket.port}', f'--drone={self._ip}:{port+88}', f'--dss_ip={self._ip}', '--descr=dss->port 88 [SIM]', '--without-clearance-check', '--without-midstick-check', '--capabilities', 'C0', 'RTK', 'LMD', 'RGB', 'VIDEO', 'SIM')
+    dss.auxiliaries.spawnDaemon.spawnDaemon('./crm_dss.py', 'crm_dss.py', f'--dss_id={dss_id}', f'--crm={self._ip}:{self._socket.port}', f'--drone={self._ip}:{port+88}', f'--dss_ip={self._ip}', '--descr=dss->port 88 [SIM]', '--without-clearance-check', '--without-midstick-check', '--capabilities', 'PLANE', 'SIM')
     return dss.auxiliaries.zmq_lib.ack(fcn)
 
+  # Launch three simulated instances, connect a mavproxy to each of them and finally spawn a dss connecting to the mavproxy.
   def _request_launch_sitl(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
