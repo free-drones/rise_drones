@@ -155,7 +155,7 @@ class CRM:
 
       try:
         msg = self._socket.recv_json()
-      except dss.auxiliaries.exception.Again as error:
+      except dss.auxiliaries.exception.Again:
         self.delStaleClients()
         continue # timeout: no message received; try again
 
@@ -524,6 +524,7 @@ class CRM:
     dss.auxiliaries.spawnDaemon.spawnDaemon('./crm_dss.py', 'crm_dss.py', f'--dss_id={dss_id}', f'--crm={self._ip}:{self._socket.port}', f'--drone={self._ip}:{port+88}', f'--dss_ip={self._ip}', '--descr=dss->port 88 [SIM]', '--without-clearance-check', '--without-midstick-check', '--capabilities', 'PLANE', 'SIM')
     return dss.auxiliaries.zmq_lib.ack(fcn)
 
+  # Launch three simulated instances, connect a mavproxy to each of them and finally spawn a dss connecting to the mavproxy.
   def _request_launch_sitl(self, msg: dict) -> dict:
     fcn = dss.auxiliaries.zmq_lib.get_fcn(msg)
 
